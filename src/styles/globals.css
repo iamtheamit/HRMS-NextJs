@@ -1,0 +1,11 @@
+/* globals.css */
+/* Defines global styles and TailwindCSS base layers for the HRMS frontend. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 text-slate-900;
+}
+
