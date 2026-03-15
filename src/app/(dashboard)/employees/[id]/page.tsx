@@ -5,7 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
-import { employeeService } from '@/modules/employee/services/employeeService';
+import { employeeService } from '@/entities/employee/services/employeeService';
 
 type EmployeeDetailsPageProps = {
   params: { id: string };
@@ -33,13 +33,8 @@ export default function EmployeeDetailsPage({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 overflow-hidden">
-      <h1 className="text-xl font-semibold text-slate-900">{data.name}</h1>
+      <h1 className="text-xl font-semibold text-slate-900">{`${data.firstName ?? ''} ${data.lastName ?? ''}`}</h1>
       <p className="mt-1 text-sm text-slate-600">{data.email}</p>
-      {(data.designation || data.department) && (
-        <p className="mt-1 text-sm text-slate-500">
-          {[data.designation, data.department].filter(Boolean).join(' · ')}
-        </p>
-      )}
     </div>
   );
 }

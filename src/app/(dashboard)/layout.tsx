@@ -15,7 +15,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="hidden lg:block lg:w-64 lg:shrink-0">
         <Sidebar />
       </div>
-      <div className="flex flex-1 flex-col">
+      {/* Add left padding on large screens to prevent the main content from sitting under the sidebar */}
+      <div className="flex flex-1 flex-col lg:pl-64">
         <Header />
         <main className="flex-1 p-6">
           <div className="mx-auto w-full max-w-7xl">

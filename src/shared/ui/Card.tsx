@@ -1,7 +1,25 @@
-import React from 'react';
+// Card.tsx
+// Provides a reusable card container with flat, clean SaaS styling.
 
-export const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-lg bg-white p-4 shadow-sm ${className}`}>{children}</div>
-);
+import type { ReactNode } from 'react';
+import clsx from 'clsx';
+
+type CardProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+export const Card = ({ children, className }: CardProps) => {
+  return (
+    <div
+      className={clsx(
+        'rounded-xl border border-gray-200 bg-white p-5 shadow-sm overflow-hidden max-w-full',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+};
 
 export default Card;

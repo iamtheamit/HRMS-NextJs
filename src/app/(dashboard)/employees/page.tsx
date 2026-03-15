@@ -1,20 +1,20 @@
 // employees/page.tsx
 // Renders the employee management table with avatars, status badges, and actions.
 
-'use client';
+"use client";
 
-import { useEmployees } from '@/modules/employee/hooks/useEmployees';
-import { Table } from '@/shared/components/Table';
-import { Avatar } from '@/shared/components/Avatar';
-import { Badge } from '@/shared/components/Badge';
-import { Button } from '@/shared/components/Button';
-import { LoadingSkeleton } from '@/shared/components/LoadingSkeleton';
+import { useEmployees } from '@/entities/employee/model/useEmployees';
+import { Table } from '@/shared/ui/Table';
+import { Avatar } from '@/shared/ui/Avatar';
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import { LoadingSkeleton } from '@/shared/ui/LoadingSkeleton';
 import { Pencil, Trash2 } from 'lucide-react';
 
 export default function EmployeesPage() {
   const { data, isLoading, isError } = useEmployees();
 
-  const rows = data ?? [];
+  const rows = data?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -62,34 +62,21 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar size="sm" status="online">
-                          {employee.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()}
+                          {`${(employee.firstName ?? '').charAt(0)}${(employee.lastName ?? '').charAt(0)}`.toUpperCase()}
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium text-slate-900">
-                            {employee.name}
+                            {`${employee.firstName ?? ''} ${employee.lastName ?? ''}`}
                           </p>
-                          <p className="text-xs text-slate-400">
-                            {employee.email}
-                          </p>
+                          <p className="text-xs text-slate-400">{employee.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="success">Active</Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">
-                      {employee.designation ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="soft">{employee.department ?? 'General'}</Badge>
-                      </div>
-                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">—</td>
+                    <td className="px-4 py-3">—</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button

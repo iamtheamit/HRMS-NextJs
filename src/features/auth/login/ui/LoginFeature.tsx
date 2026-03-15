@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { LoginForm } from '@/modules/auth/components/LoginForm';
+import { LoginForm } from '@/features/auth/login/components/LoginForm';
 
 export function LoginFeature({ onSuccess }: { onSuccess?: () => void }) {
   return <LoginForm onSuccess={onSuccess} />;

@@ -38,3 +38,4 @@ export const Avatar = ({ children, size = 'md', status }: AvatarProps) => {
   );
 };
 
+export default Avatar;

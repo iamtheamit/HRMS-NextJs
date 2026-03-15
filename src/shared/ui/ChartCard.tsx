@@ -4,7 +4,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Card } from '@/shared/components/Card';
+import { Card } from '@/shared/ui/Card';
 
 type ChartCardProps = {
   title: string;
@@ -31,3 +31,4 @@ export const ChartCard = ({ title, description, children, className }: ChartCard
   );
 };
 
+export default ChartCard;

@@ -5,7 +5,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { LoginForm } from '@/modules/auth/components/LoginForm';
+import { LoginForm } from '@/features/auth/login/components/LoginForm';
 import { routes } from '@/constants/routes';
 import { useAuthStore } from '@/store/authStore';
 

@@ -21,7 +21,7 @@ export const Breadcrumb = ({ pathname }: BreadcrumbProps) => {
   return (
     <nav className="flex items-center gap-1 text-xs text-slate-400">
       <BreadcrumbItem>Home</BreadcrumbItem>
-      {segments.map((segment, index) => (
+      {segments.map((segment) => (
         <span key={segment} className="flex items-center gap-1">
           <span>/</span>
           <BreadcrumbItem>
@@ -33,3 +33,4 @@ export const Breadcrumb = ({ pathname }: BreadcrumbProps) => {
   );
 };
 
+export default Breadcrumb;

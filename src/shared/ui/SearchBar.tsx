@@ -22,3 +22,4 @@ export const SearchBar = ({ placeholder, ...rest }: SearchBarProps) => {
   );
 };
 
+export default SearchBar;
