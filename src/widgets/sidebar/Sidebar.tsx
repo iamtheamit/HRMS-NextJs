@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,6 +9,7 @@ import {
   Building2,
   CalendarCheck2,
   CalendarClock,
+  ClipboardList,
   Settings,
   Menu,
   X,
@@ -28,7 +29,8 @@ const mainNav: NavItem[] = [
   { label: 'Employees', href: '/employees', icon: Users },
   { label: 'Departments', href: '/departments', icon: Building2 },
   { label: 'Attendance', href: '/attendance', icon: CalendarCheck2 },
-  { label: 'Leave', href: '/leave', icon: CalendarClock }
+  { label: 'Leave', href: '/leave', icon: CalendarClock },
+  { label: 'Tasks', href: '/tasks', icon: ClipboardList }
 ];
 
 const bottomNav: NavItem[] = [
@@ -42,12 +44,10 @@ function isActive(pathname: string, href: string) {
 
 function SidebarLink({
   item,
-  pathname,
-  onClick
+  pathname
 }: {
   item: NavItem;
   pathname: string;
-  onClick?: () => void;
 }) {
   const Icon = item.icon;
   const active = isActive(pathname, item.href);
@@ -55,7 +55,6 @@ function SidebarLink({
   return (
     <Link
       href={item.href}
-      onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={clsx(
         'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
@@ -81,6 +80,11 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
   const closeMobile = () => setOpen(false);
 
+  // Keep links pure and close drawer only after route changes.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   const sidebar = (
     <>
       {/* Brand */}
@@ -100,14 +104,14 @@ export function Sidebar() {
           Menu
         </p>
         {mainNav.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} onClick={closeMobile} />
+          <SidebarLink key={item.href} item={item} pathname={pathname} />
         ))}
       </nav>
 
       {/* Bottom section */}
       <div className="mt-auto space-y-1 border-t border-white/[0.06] px-3 pt-3">
         {bottomNav.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} onClick={closeMobile} />
+          <SidebarLink key={item.href} item={item} pathname={pathname} />
         ))}
 
         {/* User profile */}

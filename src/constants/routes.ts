@@ -8,6 +8,7 @@ export const routes = {
   departments: '/departments',
   employeeDetails: (id: string | number) => `/employees/${id}`,
   attendance: '/attendance',
-  leave: '/leave'
+  leave: '/leave',
+  tasks: '/tasks'
 } as const;
 

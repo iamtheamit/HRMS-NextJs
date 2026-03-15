@@ -10,6 +10,7 @@ const titleMap: Record<string, string> = {
   '/departments': 'Departments',
   '/attendance': 'Attendance',
   '/leave': 'Leave Management',
+  '/tasks': 'Task Assignment',
   '/settings': 'Settings'
 };
 
