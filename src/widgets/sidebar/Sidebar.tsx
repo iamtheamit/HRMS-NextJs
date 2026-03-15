@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
+  Building2,
   CalendarCheck2,
   CalendarClock,
   Settings,
@@ -25,6 +26,7 @@ type NavItem = {
 const mainNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Employees', href: '/employees', icon: Users },
+  { label: 'Departments', href: '/departments', icon: Building2 },
   { label: 'Attendance', href: '/attendance', icon: CalendarCheck2 },
   { label: 'Leave', href: '/leave', icon: CalendarClock }
 ];
@@ -134,7 +136,7 @@ export function Sidebar() {
       {/* Mobile toggle */}
       <button
         type="button"
-        className="fixed left-4 top-4 z-[60] flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-elevated lg:hidden"
+        className="fixed top-3 left-3 z-[60] flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white/95 shadow-elevated backdrop-blur lg:hidden"
         onClick={() => setOpen((v) => !v)}
         aria-label="Toggle menu"
       >

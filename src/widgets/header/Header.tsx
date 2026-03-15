@@ -7,6 +7,7 @@ import { Bell, Search, Settings } from 'lucide-react';
 const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/employees': 'Employees',
+  '/departments': 'Departments',
   '/attendance': 'Attendance',
   '/leave': 'Leave Management',
   '/settings': 'Settings'
@@ -31,7 +32,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between gap-4 py-3 pr-4 pl-16 sm:px-6 lg:px-8">
         {/* Left: breadcrumb + title */}
         <div className="min-w-0">
           <nav className="flex items-center gap-1 text-xs text-slate-400">

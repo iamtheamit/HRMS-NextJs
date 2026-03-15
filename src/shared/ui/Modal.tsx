@@ -21,17 +21,17 @@ export const Modal = ({ open, onClose, title, children, className }: ModalProps)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto p-4 sm:items-center">
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
         className={clsx(
-          'relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl',
+          'relative z-10 my-4 w-full max-w-lg rounded-2xl bg-white shadow-xl sm:my-0',
           className
         )}
       >
         {title && (
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+          <div className="sticky top-0 z-10 mb-4 flex items-center justify-between rounded-t-2xl bg-white px-6 pt-5 pb-4 border-b border-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
             <button
               type="button"
               onClick={onClose}
@@ -41,7 +41,7 @@ export const Modal = ({ open, onClose, title, children, className }: ModalProps)
             </button>
           </div>
         )}
-        {children}
+        <div className="px-6 pb-6">{children}</div>
       </div>
     </div>
   );
