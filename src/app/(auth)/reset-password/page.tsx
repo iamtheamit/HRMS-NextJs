@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, BadgeCheck, KeyRound, LockKeyhole, Sparkles } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Button } from '@/shared/ui/Button';
 import { useResetPassword } from '@/features/auth/login/model/useResetPassword';
 import { routes } from '@/constants/routes';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const resetPasswordMutation = useResetPassword();
@@ -141,5 +141,13 @@ export default function ResetPasswordPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<main className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">Loading reset form...</main>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
