@@ -10,11 +10,10 @@ export const apiClient = axios.create({
   }
 });
 
-// Example interceptor for auth token. Replace with your auth store retrieval.
+// Attach persisted auth token for API requests.
 apiClient.interceptors.request.use((config) => {
   try {
-    // read token from localStorage or cookie if needed
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('hrms_token') : null;
     if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
   } catch (e) {
     // ignore

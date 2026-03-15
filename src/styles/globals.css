@@ -1,6 +1,3 @@
-/* globals.css */
-/* Defines global styles and TailwindCSS base layers for the HRMS frontend. */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,6 +8,25 @@ body {
 }
 
 body {
-  @apply bg-slate-50 text-slate-900;
+  background-color: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }
 

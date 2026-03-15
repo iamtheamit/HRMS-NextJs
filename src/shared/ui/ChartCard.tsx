@@ -1,6 +1,3 @@
-// ChartCard.tsx
-// Wraps Recharts visualizations inside a styled card with a header.
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -11,22 +8,22 @@ type ChartCardProps = {
   description?: string;
   children: ReactNode;
   className?: string;
+  action?: ReactNode;
 };
 
-export const ChartCard = ({ title, description, children, className }: ChartCardProps) => {
+export const ChartCard = ({ title, description, children, className, action }: ChartCardProps) => {
   return (
-    <Card className={`h-full overflow-hidden ${className ?? ''}`}>
-      <div className="mb-3 flex items-center justify-between">
+    <Card className={className}>
+      <div className="mb-4 flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            {title}
-          </p>
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
           {description && (
-            <p className="mt-0.5 text-xs text-slate-400">{description}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{description}</p>
           )}
         </div>
+        {action}
       </div>
-      <div className="h-48 max-w-full overflow-hidden">{children}</div>
+      <div className="h-52 w-full">{children}</div>
     </Card>
   );
 };

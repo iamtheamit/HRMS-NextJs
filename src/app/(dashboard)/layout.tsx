@@ -11,15 +11,13 @@ type DashboardLayoutProps = {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="hidden lg:block lg:w-64 lg:shrink-0">
-        <Sidebar />
-      </div>
-      {/* Add left padding on large screens to prevent the main content from sitting under the sidebar */}
-      <div className="flex flex-1 flex-col lg:pl-64">
+    <div className="flex h-screen overflow-hidden bg-surface-muted">
+      <Sidebar />
+
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main className="flex-1 p-6">
-          <div className="mx-auto w-full max-w-7xl">
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </div>
         </main>

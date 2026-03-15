@@ -1,25 +1,22 @@
-// Card.tsx
-// Provides a reusable card container with flat, clean SaaS styling.
-
-import type { ReactNode } from 'react';
+import React from 'react';
 import clsx from 'clsx';
 
 type CardProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
+  noPadding?: boolean;
 };
 
-export const Card = ({ children, className }: CardProps) => {
-  return (
-    <div
-      className={clsx(
-        'rounded-xl border border-gray-200 bg-white p-5 shadow-sm overflow-hidden max-w-full',
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-};
+export const Card = ({ children, className, noPadding }: CardProps) => (
+  <div
+    className={clsx(
+      'rounded-2xl border border-slate-200/80 bg-white shadow-card',
+      !noPadding && 'p-5 sm:p-6',
+      className
+    )}
+  >
+    {children}
+  </div>
+);
 
 export default Card;

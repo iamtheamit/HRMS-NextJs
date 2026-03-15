@@ -3,40 +3,58 @@
 import React, { useState } from 'react';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
-import apiClient from '@/shared/api/apiClient';
+import { useLogin } from '@/features/auth/login/model/useLogin';
 
 export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginMutation = useLogin();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
     try {
-      const res = await apiClient.post('/auth/login', { email, password });
-      // store token if provided
-      if (res?.data?.token && typeof window !== 'undefined') {
-        localStorage.setItem('token', res.data.token);
-      }
+      await loginMutation.mutateAsync({ email, password });
       onSuccess && onSuccess();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Unable to sign in');
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <div className="flex items-center justify-between">
-        <Button type="submit" loading={loading}>Sign in</Button>
+    <form onSubmit={submit} className="space-y-5">
+      {error && (
+        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <Input
+        label="Email"
+        type="email"
+        placeholder="you@company.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <Input
+        label="Password"
+        type="password"
+        placeholder="••••••••"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <div className="flex items-center justify-between text-sm">
+        <label className="flex items-center gap-2 text-slate-600">
+          <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300" />
+          Remember me
+        </label>
+        <a href="#" className="font-medium text-brand-600 hover:text-brand-700">
+          Forgot password?
+        </a>
       </div>
+      <Button type="submit" loading={loginMutation.isPending} className="w-full" size="lg">
+        Sign in
+      </Button>
     </form>
   );
 }

@@ -9,17 +9,24 @@ export function EmployeeTable() {
 
   if (isLoading) return <div>Loading...</div>;
 
-  const rows = data?.data ?? [];
-
   return (
-    <Table headers={[ 'Name', 'Email', 'Role' ]}>
-      {rows.map((e) => (
-        <tr key={e.id} className="border-t">
-          <td className="p-2">{e.firstName} {e.lastName}</td>
-          <td className="p-2">{e.email}</td>
-          <td className="p-2">{e.role}</td>
+    <Table>
+      <thead>
+        <tr>
+          <th className="text-left p-2">Name</th>
+          <th className="text-left p-2">Email</th>
+          <th className="text-left p-2">Role</th>
         </tr>
-      ))}
+      </thead>
+      <tbody>
+        {data?.data.map((e) => (
+          <tr key={e.id} className="border-t">
+            <td className="p-2">{e.firstName} {e.lastName}</td>
+            <td className="p-2">{e.email}</td>
+            <td className="p-2">{e.role}</td>
+          </tr>
+        ))}
+      </tbody>
     </Table>
   );
 }
