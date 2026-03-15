@@ -3,12 +3,9 @@
 import clsx from 'clsx';
 import {
   Building2,
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Hash,
-  Landmark,
-  UserCog,
   X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -31,33 +28,20 @@ type Step1Errors = {
   code?: string;
 };
 
-type Step2Errors = {
-  head?: string;
-  createdOn?: string;
-  costCenter?: string;
-};
-
 const CODE_RE = /^[A-Z]{2,5}$/;
-const COST_CENTER_RE = /^CC-\d{3}$/i;
-
 const defaultForm: DepartmentFormValues = {
   name: '',
   code: '',
-  head: '',
-  createdOn: '',
-  costCenter: ''
 };
 
 const STEPS = [
   { id: 1, label: 'Overview', sub: 'Name and code', icon: Building2 },
-  { id: 2, label: 'Ownership', sub: 'Lead and finance', icon: UserCog },
-  { id: 3, label: 'Review', sub: 'Confirm and save', icon: CheckCircle2 }
+  { id: 2, label: 'Review', sub: 'Confirm and save', icon: CheckCircle2 }
 ] as const;
 
 const STEP_COLORS: Record<number, string> = {
   1: 'bg-brand-600',
-  2: 'bg-emerald-600',
-  3: 'bg-indigo-600'
+  2: 'bg-indigo-600'
 };
 
 function validateStep1(
@@ -97,30 +81,6 @@ function validateStep1(
   return errors;
 }
 
-function validateStep2(form: DepartmentFormValues): Step2Errors {
-  const errors: Step2Errors = {};
-
-  if (!form.head.trim()) {
-    errors.head = 'Department head is required.';
-  } else if (form.head.trim().length < 3) {
-    errors.head = 'Use at least 3 characters.';
-  }
-
-  if (!form.createdOn) {
-    errors.createdOn = 'Created date is required.';
-  } else if (new Date(form.createdOn) > new Date()) {
-    errors.createdOn = 'Created date cannot be in the future.';
-  }
-
-  if (!form.costCenter.trim()) {
-    errors.costCenter = 'Cost center is required.';
-  } else if (!COST_CENTER_RE.test(form.costCenter.trim().toUpperCase())) {
-    errors.costCenter = 'Use the CC-123 format.';
-  }
-
-  return errors;
-}
-
 function hasErrors(errors: Record<string, string | undefined>) {
   return Object.values(errors).some(Boolean);
 }
@@ -129,7 +89,7 @@ function ReviewCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className="mt-2 text-sm font-medium text-slate-900">{value || '—'}</p>
+      <p className="mt-2 text-sm font-medium text-slate-900">{value || '-'}</p>
     </div>
   );
 }
@@ -149,7 +109,6 @@ export function AddDepartmentWizard({
   const [submitted, setSubmitted] = useState(false);
 
   const step1Errors = validateStep1(form, existingDepartmentNames, existingDepartmentCodes, initialForm);
-  const step2Errors = validateStep2(form);
 
   useEffect(() => {
     if (!open) {
@@ -181,7 +140,6 @@ export function AddDepartmentWizard({
     setTouched(true);
 
     if (step === 1 && hasErrors(step1Errors)) return;
-    if (step === 2 && hasErrors(step2Errors)) return;
 
     goToStep(step + 1);
   };
@@ -190,9 +148,6 @@ export function AddDepartmentWizard({
     const normalizedForm = {
       name: form.name.trim(),
       code: form.code.trim().toUpperCase(),
-      head: form.head.trim(),
-      createdOn: form.createdOn,
-      costCenter: form.costCenter.trim().toUpperCase()
     };
 
     onSubmit(normalizedForm);
@@ -314,73 +269,6 @@ export function AddDepartmentWizard({
 
           {step === 2 && (
             <div className="space-y-5">
-              <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 p-4">
-                <p className="text-xs font-medium text-emerald-700">
-                  Define who owns this department and how it maps into your finance structure.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                  <UserCog className="h-3.5 w-3.5 text-slate-400" /> Department Head <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={form.head}
-                  onChange={(event) => set('head', event.target.value)}
-                  placeholder="e.g. Rahul Verma"
-                  className={clsx(
-                    'block w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2',
-                    touched && step2Errors.head
-                      ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                      : 'border-slate-200 focus:border-emerald-400 focus:ring-emerald-100'
-                  )}
-                />
-                {touched && step2Errors.head && <p className="text-xs text-red-500">{step2Errors.head}</p>}
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                    <CalendarDays className="h-3.5 w-3.5 text-slate-400" /> Created On <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.createdOn}
-                    onChange={(event) => set('createdOn', event.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    className={clsx(
-                      'block w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:ring-2',
-                      touched && step2Errors.createdOn
-                        ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                        : 'border-slate-200 focus:border-emerald-400 focus:ring-emerald-100'
-                    )}
-                  />
-                  {touched && step2Errors.createdOn && <p className="text-xs text-red-500">{step2Errors.createdOn}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                    <Landmark className="h-3.5 w-3.5 text-slate-400" /> Cost Center <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    value={form.costCenter}
-                    onChange={(event) => set('costCenter', event.target.value.toUpperCase())}
-                    placeholder="CC-102"
-                    className={clsx(
-                      'block w-full rounded-xl border bg-white px-4 py-2.5 text-sm uppercase text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2',
-                      touched && step2Errors.costCenter
-                        ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                        : 'border-slate-200 focus:border-emerald-400 focus:ring-emerald-100'
-                    )}
-                  />
-                  {touched && step2Errors.costCenter && <p className="text-xs text-red-500">{step2Errors.costCenter}</p>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-5">
               {submitted ? (
                 <div className="flex flex-col items-center gap-4 py-10 text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -390,7 +278,7 @@ export function AddDepartmentWizard({
                     <p className="text-lg font-semibold text-slate-900">
                       {mode === 'edit' ? 'Department Updated!' : 'Department Created!'}
                     </p>
-                    <p className="text-sm text-slate-500">Returning to the directory…</p>
+                    <p className="text-sm text-slate-500">Returning to the directory...</p>
                   </div>
                 </div>
               ) : (
@@ -400,18 +288,16 @@ export function AddDepartmentWizard({
                       {form.code || 'DP'}
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-slate-900">{form.name || '—'}</p>
-                      <p className="text-sm text-slate-500">Owned by {form.head || '—'}</p>
-                      <Badge variant="soft" className="mt-1">{form.costCenter || 'Cost center pending'}</Badge>
+                      <p className="text-lg font-semibold text-slate-900">{form.name || '-'}</p>
+                      <p className="text-sm text-slate-500">Created date is auto-managed by the system.</p>
+                      <Badge variant="soft" className="mt-1">Ready to save</Badge>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ReviewCard label="Department Name" value={form.name} />
                     <ReviewCard label="Department Code" value={form.code} />
-                    <ReviewCard label="Department Head" value={form.head} />
-                    <ReviewCard label="Created On" value={form.createdOn} />
-                    <ReviewCard label="Cost Center" value={form.costCenter} />
+                    <ReviewCard label="Created On" value="Auto-generated by system" />
                     <ReviewCard label="Mode" value={mode === 'edit' ? 'Update existing department' : 'Create new department'} />
                   </div>
                 </>
@@ -423,7 +309,7 @@ export function AddDepartmentWizard({
         <div className="shrink-0 border-t border-slate-100 bg-slate-50/80 px-6 py-4">
           <div className="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" onClick={step === 1 ? onClose : () => goToStep(step - 1)}>
-              {step === 1 ? 'Cancel' : '← Back'}
+              {step === 1 ? 'Cancel' : '<- Back'}
             </Button>
 
             <div className="flex items-center gap-2">

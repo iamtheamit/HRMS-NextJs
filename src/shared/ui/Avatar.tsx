@@ -1,3 +1,6 @@
+// Avatar.tsx
+// Renders a simple user avatar with initials and optional status indicator.
+
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 

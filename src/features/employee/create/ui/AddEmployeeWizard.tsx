@@ -4,30 +4,41 @@ import clsx from 'clsx';
 import {
   Briefcase,
   Camera,
+  Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   FileText,
   Landmark,
   Mail,
   MapPin,
   Phone,
+  Search,
   Upload,
   User,
   X
 } from 'lucide-react';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
 import { useCreateEmployee } from '../model/useCreateEmployee';
+import { listDepartmentsApi } from '@/features/department/api/departmentApi';
+import { fetchEmployees } from '@/entities/employee/api/employeeApi';
+import { uploadMediaFilesApi, type UploadedMediaItem } from '@/features/media/api/uploadMediaApi';
 
 /* ─── validation ──────────────────────────────────────────────── */
-type Step1Errors = { firstName?: string; lastName?: string; email?: string; dob?: string; contact?: string };
-type Step2Errors = { designation?: string; joiningDate?: string; employeeCode?: string };
+type Step1Errors = { firstName?: string; lastName?: string; email?: string; dob?: string; countryCode?: string; mobileNumber?: string };
+type Step2Errors = { designation?: string; joiningDate?: string; employeeCode?: string; departmentId?: string };
 type Step3Errors = { aadhar?: string; pan?: string };
 type AllErrors = { step1: Step1Errors; step2: Step2Errors; step3: Step3Errors };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+]?[\d\s\-()]{7,15}$/;
+const COUNTRY_CODE_RE = /^\+\d{1,4}$/;
+const MOBILE_RE = /^\d{7,15}$/;
 const EMP_CODE_RE = /^EMP-\d{3,6}$/i;
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -44,7 +55,15 @@ function validateStep1(form: FormState): Step1Errors {
     if (age < 18) e.dob = 'Employee must be at least 18 years old.';
     if (age > 70) e.dob = 'Enter a valid date of birth.';
   }
-  if (form.contact && !PHONE_RE.test(form.contact)) e.contact = 'Enter a valid contact number.';
+  if (form.countryCode && !COUNTRY_CODE_RE.test(form.countryCode)) {
+    e.countryCode = 'Use valid format like +91.';
+  }
+  if (form.mobileNumber && !MOBILE_RE.test(form.mobileNumber)) {
+    e.mobileNumber = 'Enter 7-15 digits.';
+  }
+  if ((form.countryCode && !form.mobileNumber) || (!form.countryCode && form.mobileNumber)) {
+    e.mobileNumber = 'Provide both country code and mobile number.';
+  }
   return e;
 }
 
@@ -54,6 +73,7 @@ function validateStep2(form: FormState): Step2Errors {
   else if (form.designation.trim().length < 3) e.designation = 'At least 3 characters.';
   if (form.joiningDate && new Date(form.joiningDate) > new Date()) e.joiningDate = 'Joining date cannot be in the future.';
   if (form.employeeCode && !EMP_CODE_RE.test(form.employeeCode)) e.employeeCode = 'Format must be EMP-XXXX (e.g. EMP-1002).';
+  if (!form.departmentId) e.departmentId = 'Department is required.';
   return e;
 }
 
@@ -76,16 +96,24 @@ type FormState = {
   firstName: string;
   lastName: string;
   email: string;
+  accountRole: 'EMPLOYEE' | 'MANAGER' | 'HR_ADMIN';
   dob: string;
-  contact: string;
+  countryCode: string;
+  mobileNumber: string;
   address: string;
   designation: string;
-  department: string;
+  departmentId: string;
+  managerId: string;
   joiningDate: string;
   employeeCode: string;
 };
 
 type DocState = Record<'aadhar' | 'pan' | 'offer' | 'other', File | null>;
+type UploadStatus = 'idle' | 'uploading' | 'uploaded' | 'error';
+type DocUploadState = Record<
+  keyof DocState,
+  { status: UploadStatus; item: UploadedMediaItem | null; message?: string }
+>;
 
 type Props = {
   open: boolean;
@@ -97,18 +125,25 @@ const defaultForm: FormState = {
   firstName: '',
   lastName: '',
   email: '',
+  accountRole: 'EMPLOYEE',
   dob: '',
-  contact: '',
+  countryCode: '+91',
+  mobileNumber: '',
   address: '',
   designation: '',
-  department: 'Engineering',
+  departmentId: '',
+  managerId: '',
   joiningDate: '',
   employeeCode: ''
 };
 
 const defaultDocs: DocState = { aadhar: null, pan: null, offer: null, other: null };
-
-const departments = ['Engineering', 'Human Resources', 'Finance', 'Operations', 'Product', 'Marketing'];
+const defaultDocUploads: DocUploadState = {
+  aadhar: { status: 'idle', item: null },
+  pan: { status: 'idle', item: null },
+  offer: { status: 'idle', item: null },
+  other: { status: 'idle', item: null },
+};
 
 const STEPS = [
   { id: 1, label: 'Personal', sub: 'Basic info & photo', icon: User },
@@ -200,31 +235,150 @@ function DocZone({
 /* ─── main wizard ────────────────────────────────────────────── */
 export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
   const createEmployee = useCreateEmployee();
+  const departmentQuery = useQuery({
+    queryKey: ['departments'],
+    queryFn: listDepartmentsApi,
+  });
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>({ ...defaultForm, ...initialForm });
   const [docs, setDocs] = useState<DocState>(defaultDocs);
+  const [docUploads, setDocUploads] = useState<DocUploadState>(defaultDocUploads);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [docPreviewUrls, setDocPreviewUrls] = useState<Partial<Record<keyof DocState, string>>>({});
   const [touched, setTouched] = useState(false); // true after first "Next" attempt on current step
   const photoRef = useRef<HTMLInputElement>(null);
+  const deptRef = useRef<HTMLDivElement>(null);
+  const deptPopupRef = useRef<HTMLDivElement>(null);
+  const [deptSearch, setDeptSearch] = useState('');
+  const [deptOpen, setDeptOpen] = useState(false);
+  const [deptPage, setDeptPage] = useState(1);
+  const [deptPopupStyle, setDeptPopupStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+  const roleRef = useRef<HTMLDivElement>(null);
+  const rolePopupRef = useRef<HTMLDivElement>(null);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [rolePopupStyle, setRolePopupStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+  const managerRef = useRef<HTMLDivElement>(null);
+  const managerPopupRef = useRef<HTMLDivElement>(null);
+  const [managerSearch, setManagerSearch] = useState('');
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [managerPage, setManagerPage] = useState(1);
+  const [managerPopupStyle, setManagerPopupStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const managersQuery = useQuery({
+    queryKey: ['employees', 'dropdown-managers'],
+    queryFn: () => fetchEmployees(1, 500),
+    enabled: open,
+  });
 
   // Compute live errors (only shown when touched)
   const e1 = validateStep1(form);
   const e2 = validateStep2(form);
   const e3 = validateStep3(docs);
+  const departments = departmentQuery.data || [];
+  const DEPT_PAGE_SIZE = 8;
+  const filteredDepts = useMemo(
+    () => departments.filter((d) => d.name.toLowerCase().includes(deptSearch.toLowerCase())),
+    [departments, deptSearch]
+  );
+  const visibleDepts = filteredDepts.slice(0, deptPage * DEPT_PAGE_SIZE);
+  const hasMoreDepts = visibleDepts.length < filteredDepts.length;
+  const selectedDeptName = departments.find((d) => d.id === form.departmentId)?.name ?? '';
+  const managerRows = managersQuery.data || [];
+  const MANAGER_PAGE_SIZE = 8;
+  const filteredManagers = useMemo(() => {
+    const q = managerSearch.toLowerCase().trim();
+    const rows = managerRows;
+    if (!q) return rows;
+    return rows.filter((row) => `${row.firstName || ''} ${row.lastName || ''} ${row.email || ''}`.toLowerCase().includes(q));
+  }, [managerRows, managerSearch]);
+  const visibleManagers = filteredManagers.slice(0, managerPage * MANAGER_PAGE_SIZE);
+  const hasMoreManagers = visibleManagers.length < filteredManagers.length;
+  const selectedManager = managerRows.find((row) => row.id === form.managerId);
+  const selectedManagerLabel = selectedManager ? `${selectedManager.firstName || ''} ${selectedManager.lastName || ''}`.trim() || selectedManager.email : '';
+  const isAnyDocUploading = useMemo(
+    () => Object.values(docUploads).some((entry) => entry.status === 'uploading'),
+    [docUploads]
+  );
+  const hasDocUploadError = useMemo(
+    () => Object.values(docUploads).some((entry) => entry.status === 'error'),
+    [docUploads]
+  );
 
   useEffect(() => {
     if (!open) {
       setStep(1);
       setForm({ ...defaultForm, ...initialForm });
       setDocs(defaultDocs);
+      setDocUploads(defaultDocUploads);
       setAvatarUrl(null);
+      setAvatarFile(null);
       setSubmitted(false);
+      setIsSubmitting(false);
       setApiError(null);
       setTouched(false);
     }
   }, [open, initialForm]);
+
+  useEffect(() => {
+    if (!departments.length) return;
+    if (form.departmentId) return;
+    set('departmentId', departments[0].id);
+  }, [departments, form.departmentId]);
+
+  useEffect(() => {
+    if (!deptOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inTrigger = deptRef.current?.contains(target);
+      const inPopup = deptPopupRef.current?.contains(target);
+      if (!inTrigger && !inPopup) setDeptOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [deptOpen]);
+
+  useEffect(() => {
+    if (!roleOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!roleRef.current?.contains(target) && !rolePopupRef.current?.contains(target)) setRoleOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [roleOpen]);
+
+  useEffect(() => {
+    const nextUrls: Partial<Record<keyof DocState, string>> = {};
+    (Object.entries(docs) as [keyof DocState, File | null][]).forEach(([key, file]) => {
+      if (file) {
+        nextUrls[key] = URL.createObjectURL(file);
+      }
+    });
+
+    setDocPreviewUrls(nextUrls);
+
+    return () => {
+      Object.values(nextUrls).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, [docs]);
+
+  useEffect(() => {
+    if (!managerOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inTrigger = managerRef.current?.contains(target);
+      const inPopup = managerPopupRef.current?.contains(target);
+      if (!inTrigger && !inPopup) setManagerOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [managerOpen]);
 
   // Reset touched when the step changes so errors clear until user tries again
   const goToStep = (next: number) => { setStep(next); setTouched(false); };
@@ -232,12 +386,57 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const setDoc = (key: keyof DocState) => (f: File | null) =>
-    setDocs((prev) => ({ ...prev, [key]: f }));
+  const getApiErrorMessage = (err: unknown) => {
+    if (isAxiosError(err)) {
+      const apiMessage = (err.response?.data as { message?: string } | undefined)?.message;
+      if (apiMessage) return apiMessage;
+      return err.message || 'Request failed. Please try again.';
+    }
+    return err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+  };
+
+  const handleDocChange = async (key: keyof DocState, file: File | null) => {
+    setDocs((prev) => ({ ...prev, [key]: file }));
+
+    if (!file) {
+      setDocUploads((prev) => ({
+        ...prev,
+        [key]: { status: 'idle', item: null },
+      }));
+      return;
+    }
+
+    setDocUploads((prev) => ({
+      ...prev,
+      [key]: { status: 'uploading', item: null, message: 'Uploading...' },
+    }));
+
+    try {
+      const uploaded = await uploadMediaFilesApi([file], {
+        folder: `hrms/employees/${(form.email || 'draft').toLowerCase()}/documents/${key}`,
+        resourceType: 'auto',
+      });
+
+      setDocUploads((prev) => ({
+        ...prev,
+        [key]: {
+          status: 'uploaded',
+          item: uploaded[0] || null,
+          message: 'Uploaded',
+        },
+      }));
+    } catch (err: unknown) {
+      setDocUploads((prev) => ({
+        ...prev,
+        [key]: { status: 'error', item: null, message: getApiErrorMessage(err) },
+      }));
+    }
+  };
 
   const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarUrl(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -248,29 +447,73 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
     if (step === 1 && hasErrors(e1)) return;
     if (step === 2 && hasErrors(e2)) return;
     if (step === 3 && hasErrors(e3)) return;
+    if (step === 3 && isAnyDocUploading) {
+      setApiError('Please wait for document uploads to complete.');
+      return;
+    }
+    if (step === 3 && hasDocUploadError) {
+      setApiError('One or more document uploads failed. Please re-upload failed files.');
+      return;
+    }
     goToStep(step + 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setApiError(null);
-    createEmployee.mutate(
-      {
+    setIsSubmitting(true);
+    try {
+      if (isAnyDocUploading) {
+        throw new Error('Please wait for document uploads to complete.');
+      }
+
+      if (hasDocUploadError) {
+        throw new Error('One or more document uploads failed. Please re-upload failed files.');
+      }
+
+      let profileUpload: UploadedMediaItem | null = null;
+      if (avatarFile) {
+        const uploads = await uploadMediaFilesApi([avatarFile], {
+          folder: `hrms/employees/${form.email.toLowerCase()}/profile`,
+          resourceType: 'auto',
+        });
+        profileUpload = uploads[0] || null;
+      }
+
+      const documentsPayload: Record<string, unknown> = {};
+      for (const [key, uploadEntry] of Object.entries(docUploads) as [keyof DocUploadState, DocUploadState[keyof DocUploadState]][]) {
+        const item = uploadEntry.item;
+        if (item) {
+          documentsPayload[key] = {
+            url: item.url,
+            publicId: item.publicId,
+            mimeType: item.mimeType,
+            originalName: item.originalName,
+            bytes: item.bytes,
+          };
+        }
+      }
+
+      await createEmployee.mutateAsync({
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
-        role: `${form.designation} | ${form.department}`
-      },
-      {
-        onSuccess: () => {
-          setSubmitted(true);
-          setTimeout(() => onClose(), 1600);
-        },
-        onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
-          setApiError(msg);
-        }
-      }
-    );
+        role: form.accountRole as 'EMPLOYEE' | 'MANAGER' | 'HR_ADMIN',
+        departmentId: form.departmentId || undefined,
+        managerId: form.managerId || undefined,
+        countryCode: form.countryCode || undefined,
+        mobileNumber: form.mobileNumber || undefined,
+        phone: form.countryCode && form.mobileNumber ? `${form.countryCode}${form.mobileNumber}` : undefined,
+        profileUrl: profileUpload?.url,
+        documents: Object.keys(documentsPayload).length ? documentsPayload : undefined,
+      });
+
+      setSubmitted(true);
+      setTimeout(() => onClose(), 1600);
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err);
+      setApiError(msg);
+      setIsSubmitting(false);
+    }
   };
 
   if (!open) return null;
@@ -376,6 +619,15 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                   <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                 </div>
                 <p className="text-xs text-slate-500">Click to upload profile photo</p>
+                {avatarFile && (
+                  <button
+                    type="button"
+                    onClick={() => { setAvatarFile(null); setAvatarUrl(null); }}
+                    className="text-xs font-medium text-red-600 hover:underline"
+                  >
+                    Remove photo
+                  </button>
+                )}
               </div>
 
               {/* Fields */}
@@ -462,21 +714,38 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                    <Phone className="h-3.5 w-3.5 text-slate-400" /> Contact Number
+                    <Phone className="h-3.5 w-3.5 text-slate-400" /> Mobile Number
                   </label>
-                  <input
-                    value={form.contact}
-                    onChange={(e) => set('contact', e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className={clsx(
-                      'block w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2',
-                      touched && e1.contact
-                        ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                        : 'border-slate-200 focus:border-brand-400 focus:ring-brand-100'
-                    )}
-                  />
-                  {touched && e1.contact && (
-                    <p className="text-xs text-red-500">{e1.contact}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-1">
+                      <input
+                        value={form.countryCode}
+                        onChange={(e) => set('countryCode', e.target.value)}
+                        placeholder="+91"
+                        className={clsx(
+                          'block w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2',
+                          touched && e1.countryCode
+                            ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
+                            : 'border-slate-200 focus:border-brand-400 focus:ring-brand-100'
+                        )}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        value={form.mobileNumber}
+                        onChange={(e) => set('mobileNumber', e.target.value.replace(/\D/g, ''))}
+                        placeholder="9876543210"
+                        className={clsx(
+                          'block w-full rounded-xl border bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2',
+                          touched && e1.mobileNumber
+                            ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
+                            : 'border-slate-200 focus:border-brand-400 focus:ring-brand-100'
+                        )}
+                      />
+                    </div>
+                  </div>
+                  {(touched && (e1.countryCode || e1.mobileNumber)) && (
+                    <p className="text-xs text-red-500">{e1.countryCode || e1.mobileNumber}</p>
                   )}
                 </div>
               </div>
@@ -506,6 +775,58 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
               </div>
 
               <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-slate-700">Account Access</label>
+                {(() => {
+                  const ROLE_OPTIONS: { value: FormState['accountRole']; label: string }[] = [
+                    { value: 'EMPLOYEE', label: 'Employee' },
+                    { value: 'MANAGER', label: 'Manager' },
+                    { value: 'HR_ADMIN', label: 'HR' },
+                  ];
+                  const selectedRoleLabel = ROLE_OPTIONS.find((o) => o.value === form.accountRole)?.label ?? 'Select role…';
+                  return (
+                    <div ref={roleRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rect = roleRef.current?.getBoundingClientRect();
+                          if (rect) setRolePopupStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                          setRoleOpen((o) => !o);
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-left transition hover:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      >
+                        <span className="text-slate-900">{selectedRoleLabel}</span>
+                        <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform duration-200', roleOpen && 'rotate-180')} />
+                      </button>
+
+                      {roleOpen && rolePopupStyle && createPortal(
+                        <div
+                          ref={rolePopupRef}
+                          style={{ position: 'fixed', top: rolePopupStyle.top, left: rolePopupStyle.left, width: rolePopupStyle.width, zIndex: 9999 }}
+                          className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                        >
+                          {ROLE_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => { set('accountRole', option.value); setRoleOpen(false); }}
+                              className={clsx(
+                                'flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50',
+                                form.accountRole === option.value ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-700'
+                              )}
+                            >
+                              <span>{option.label}</span>
+                              {form.accountRole === option.value && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                            </button>
+                          ))}
+                        </div>,
+                        document.body
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
                   <Briefcase className="h-3.5 w-3.5 text-slate-400" /> Designation / Role <span className="text-red-400">*</span>
                 </label>
@@ -526,24 +847,193 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700">Department</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {departments.map((dep) => (
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                  <Briefcase className="h-3.5 w-3.5 text-slate-400" /> Department <span className="text-red-400">*</span>
+                </label>
+                {departmentQuery.isLoading ? (
+                  <p className="text-xs text-slate-500">Loading departments…</p>
+                ) : (
+                  <div ref={deptRef} className="relative">
+                    {/* Trigger button */}
                     <button
-                      key={dep}
                       type="button"
-                      onClick={() => set('department', dep)}
+                      onClick={() => {
+                        const rect = deptRef.current?.getBoundingClientRect();
+                        if (rect) setDeptPopupStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                        setDeptOpen((o) => !o);
+                        setDeptSearch('');
+                        setDeptPage(1);
+                      }}
                       className={clsx(
-                        'rounded-xl border px-3 py-2 text-left text-xs font-medium transition',
-                        form.department === dep
-                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-200'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/40'
+                        'flex w-full items-center justify-between rounded-xl border bg-white px-4 py-2.5 text-sm text-left transition focus:outline-none focus:ring-2',
+                        deptOpen
+                          ? 'border-emerald-400 ring-2 ring-emerald-100'
+                          : touched && e2.departmentId
+                          ? 'border-red-400 ring-2 ring-red-100'
+                          : 'border-slate-200 hover:border-emerald-300'
                       )}
                     >
-                      {dep}
+                      <span className={selectedDeptName ? 'text-slate-900' : 'text-slate-400'}>
+                        {selectedDeptName || 'Select a department…'}
+                      </span>
+                      <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform duration-200', deptOpen && 'rotate-180')} />
                     </button>
-                  ))}
-                </div>
+
+                    {/* Dropdown portal — rendered in document.body to escape overflow clipping */}
+                    {deptOpen && deptPopupStyle && createPortal(
+                      <div
+                        ref={deptPopupRef}
+                        style={{ position: 'fixed', top: deptPopupStyle.top, left: deptPopupStyle.left, width: deptPopupStyle.width, zIndex: 9999 }}
+                        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                      >
+                        {/* Search */}
+                        <div className="relative border-b border-slate-100 px-3 py-2">
+                          <Search className="absolute left-5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            autoFocus
+                            value={deptSearch}
+                            onChange={(e) => { setDeptSearch(e.target.value); setDeptPage(1); }}
+                            placeholder="Search departments…"
+                            className="w-full rounded-lg bg-slate-50 py-1.5 pl-7 pr-3 text-sm outline-none placeholder:text-slate-400"
+                          />
+                        </div>
+
+                        {/* Scrollable list */}
+                        <div
+                          className="max-h-48 overflow-y-auto py-1"
+                          onScroll={(e) => {
+                            const el = e.currentTarget;
+                            if (el.scrollHeight - el.scrollTop <= el.clientHeight + 20 && hasMoreDepts) {
+                              setDeptPage((p) => p + 1);
+                            }
+                          }}
+                        >
+                          {departments.length === 0 ? (
+                            <p className="px-4 py-3 text-xs text-red-600">No departments found. Please create one first.</p>
+                          ) : filteredDepts.length === 0 ? (
+                            <p className="px-4 py-3 text-xs text-slate-500">No departments match &ldquo;{deptSearch}&rdquo;</p>
+                          ) : (
+                            visibleDepts.map((dep) => (
+                              <button
+                                key={dep.id}
+                                type="button"
+                                onClick={() => { set('departmentId', dep.id); setDeptOpen(false); }}
+                                className={clsx(
+                                  'flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-emerald-50',
+                                  form.departmentId === dep.id
+                                    ? 'bg-emerald-50 font-semibold text-emerald-700'
+                                    : 'text-slate-700'
+                                )}
+                              >
+                                <span>{dep.name}</span>
+                                {form.departmentId === dep.id && (
+                                  <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                          {hasMoreDepts && (
+                            <p className="px-4 py-2 text-center text-[11px] text-slate-400">Scroll for more…</p>
+                          )}
+                        </div>
+                      </div>,
+                      document.body
+                    )}
+                  </div>
+                )}
+                {touched && e2.departmentId && (
+                  <p className="text-xs text-red-500">{e2.departmentId}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                  <User className="h-3.5 w-3.5 text-slate-400" /> Reporting Manager
+                </label>
+                {managersQuery.isLoading ? (
+                  <p className="text-xs text-slate-500">Loading managers…</p>
+                ) : (
+                  <div ref={managerRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rect = managerRef.current?.getBoundingClientRect();
+                        if (rect) setManagerPopupStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                        setManagerOpen((o) => !o);
+                        setManagerSearch('');
+                        setManagerPage(1);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    >
+                      <span className={selectedManagerLabel ? 'text-slate-900' : 'text-slate-400'}>
+                        {selectedManagerLabel || 'Select a reporting manager (optional)…'}
+                      </span>
+                      <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform duration-200', managerOpen && 'rotate-180')} />
+                    </button>
+
+                    {managerOpen && managerPopupStyle && createPortal(
+                      <div
+                        ref={managerPopupRef}
+                        style={{ position: 'fixed', top: managerPopupStyle.top, left: managerPopupStyle.left, width: managerPopupStyle.width, zIndex: 9999 }}
+                        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                      >
+                        <div className="relative border-b border-slate-100 px-3 py-2">
+                          <Search className="absolute left-5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            autoFocus
+                            value={managerSearch}
+                            onChange={(e) => { setManagerSearch(e.target.value); setManagerPage(1); }}
+                            placeholder="Search employees…"
+                            className="w-full rounded-lg bg-slate-50 py-1.5 pl-7 pr-3 text-sm outline-none placeholder:text-slate-400"
+                          />
+                        </div>
+
+                        <div
+                          className="max-h-48 overflow-y-auto py-1"
+                          onScroll={(e) => {
+                            const el = e.currentTarget;
+                            if (el.scrollHeight - el.scrollTop <= el.clientHeight + 20 && hasMoreManagers) {
+                              setManagerPage((p) => p + 1);
+                            }
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => { set('managerId', ''); setManagerOpen(false); }}
+                            className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-50"
+                          >
+                            <span>None</span>
+                          </button>
+                          {filteredManagers.length === 0 ? (
+                            <p className="px-4 py-3 text-xs text-slate-500">No employees match your search.</p>
+                          ) : (
+                            visibleManagers.map((row) => {
+                              const rowLabel = `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.email || 'Unnamed';
+                              return (
+                                <button
+                                  key={row.id}
+                                  type="button"
+                                  onClick={() => { set('managerId', row.id); setManagerOpen(false); }}
+                                  className={clsx(
+                                    'flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-emerald-50',
+                                    form.managerId === row.id ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-700'
+                                  )}
+                                >
+                                  <span className="truncate">{rowLabel}</span>
+                                  {form.managerId === row.id && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                                </button>
+                              );
+                            })
+                          )}
+                          {hasMoreManagers && (
+                            <p className="px-4 py-2 text-center text-[11px] text-slate-400">Scroll for more…</p>
+                          )}
+                        </div>
+                      </div>,
+                      document.body
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -602,8 +1092,11 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                     icon={Landmark}
                     file={docs.aadhar}
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={setDoc('aadhar')}
+                    onChange={(file) => { void handleDocChange('aadhar', file); }}
                   />
+                  {docUploads.aadhar.status === 'uploading' && <p className="mt-1 text-xs text-brand-600">Uploading aadhar...</p>}
+                  {docUploads.aadhar.status === 'uploaded' && <p className="mt-1 text-xs text-emerald-600">Aadhar uploaded.</p>}
+                  {docUploads.aadhar.status === 'error' && <p className="mt-1 text-xs text-red-500">{docUploads.aadhar.message || 'Aadhar upload failed.'}</p>}
                   {touched && e3.aadhar && (
                     <p className="mt-1 text-xs text-red-500">{e3.aadhar}</p>
                   )}
@@ -614,8 +1107,11 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                     icon={FileText}
                     file={docs.pan}
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={setDoc('pan')}
+                    onChange={(file) => { void handleDocChange('pan', file); }}
                   />
+                  {docUploads.pan.status === 'uploading' && <p className="mt-1 text-xs text-brand-600">Uploading PAN...</p>}
+                  {docUploads.pan.status === 'uploaded' && <p className="mt-1 text-xs text-emerald-600">PAN uploaded.</p>}
+                  {docUploads.pan.status === 'error' && <p className="mt-1 text-xs text-red-500">{docUploads.pan.message || 'PAN upload failed.'}</p>}
                   {touched && e3.pan && (
                     <p className="mt-1 text-xs text-red-500">{e3.pan}</p>
                   )}
@@ -625,14 +1121,14 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                   icon={FileText}
                   file={docs.offer}
                   accept=".pdf"
-                  onChange={setDoc('offer')}
+                  onChange={(file) => { void handleDocChange('offer', file); }}
                 />
                 <DocZone
                   label="Other Document"
                   icon={FileText}
                   file={docs.other}
                   accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={setDoc('other')}
+                  onChange={(file) => { void handleDocChange('other', file); }}
                 />
               </div>
 
@@ -648,6 +1144,43 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                     </Badge>
                   )
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Preview</p>
+                <div className="space-y-2">
+                  {(Object.entries(docs) as [keyof DocState, File | null][])
+                    .filter(([, file]) => Boolean(file))
+                    .map(([key, file]) => {
+                      const f = file as File;
+                      const previewUrl = docPreviewUrls[key] || '';
+                      const isImage = f.type.startsWith('image/');
+                      return (
+                        <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {isImage ? (
+                              <img src={previewUrl} alt={f.name} className="h-10 w-10 rounded-md object-cover" />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-slate-500">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-medium text-slate-700">{f.name}</p>
+                              <p className="text-[11px] text-slate-500">{Math.round(f.size / 1024)} KB</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a href={previewUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-brand-600 hover:underline">Preview</a>
+                            <button type="button" onClick={() => { void handleDocChange(key, null); }} className="text-xs font-medium text-red-600 hover:underline">Remove</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {(Object.entries(docs) as [keyof DocState, File | null][]).every(([, file]) => !file) && (
+                    <p className="text-xs text-slate-500">No documents selected yet.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -686,15 +1219,17 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
                         {form.firstName || '—'} {form.lastName}
                       </p>
                       <p className="text-sm text-slate-500">{form.email || '—'}</p>
-                      <Badge variant="soft" className="mt-1">{form.department}</Badge>
+                      <Badge variant="soft" className="mt-1">{departments.find((dep) => dep.id === form.departmentId)?.name || 'Unassigned'}</Badge>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <ReviewCard label="Account Access" value={form.accountRole === 'MANAGER' ? 'Manager' : form.accountRole === 'HR_ADMIN' ? 'HR' : 'Employee'} />
+                    <ReviewCard label="Reporting Manager" value={selectedManagerLabel || 'Not assigned'} />
                     <ReviewCard label="Designation" value={form.designation} />
                     <ReviewCard label="Employee ID" value={form.employeeCode} />
                     <ReviewCard label="Joining Date" value={form.joiningDate} />
-                    <ReviewCard label="Contact" value={form.contact} />
+                    <ReviewCard label="Contact" value={form.countryCode && form.mobileNumber ? `${form.countryCode} ${form.mobileNumber}` : ''} />
                     <ReviewCard label="Date of Birth" value={form.dob} />
                     <ReviewCard label="Address" value={form.address} />
                   </div>
@@ -756,9 +1291,9 @@ export function AddEmployeeWizard({ open, onClose, initialForm }: Props) {
             ) : (
               <Button
                 type="button"
-                loading={createEmployee.isPending}
+                  loading={isSubmitting}
                 onClick={handleSubmit}
-                disabled={submitted}
+                  disabled={submitted || isSubmitting || isAnyDocUploading}
               >
                 Create Employee
               </Button>

@@ -23,10 +23,8 @@ export default function LoginPage() {
     <main className="flex min-h-screen">
       <AuthWelcomePanel />
 
-      {/* Right panel - form */}
       <div className="flex w-full items-center justify-center bg-white px-4 lg:w-1/2">
         <div className="w-full max-w-[400px]">
-          {/* Mobile logo */}
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 font-bold text-white shadow-sm shadow-brand-600/30 lg:hidden">
             H
           </div>

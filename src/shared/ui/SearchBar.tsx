@@ -1,3 +1,6 @@
+// SearchBar.tsx
+// Provides a styled search input used in the global navbar.
+
 'use client';
 
 import type { InputHTMLAttributes } from 'react';

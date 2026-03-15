@@ -5,13 +5,13 @@ export function getRoleHomeRoute(role?: string) {
 
   switch (normalizedRole) {
     case 'SUPER_ADMIN':
-      return routes.dashboard;
+      return routes.superAdmin;
     case 'HR_ADMIN':
-      return routes.employees;
+      return routes.hrAdmin;
     case 'MANAGER':
-      return routes.tasks;
+      return routes.manager;
     case 'EMPLOYEE':
-      return routes.attendance;
+      return routes.employee;
     default:
       return routes.dashboard;
   }

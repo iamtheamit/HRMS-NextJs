@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  createDepartmentApi,
+  listDepartmentsApi,
+  updateDepartmentApi,
+  type Department as ApiDepartment,
+} from '@/features/department/api/departmentApi';
 
 export type Department = {
   id: string;
   name: string;
   code: string;
   head: string;
+  headEmployeeId?: string;
   createdOn: string;
-  costCenter: string;
   employees: number;
   openRoles: number;
   monthlyCost: string;
@@ -19,72 +26,52 @@ export type Department = {
 export type DepartmentFormValues = {
   name: string;
   code: string;
-  head: string;
-  createdOn: string;
-  costCenter: string;
 };
 
-const initialDepartments: Department[] = [
-  {
-    id: 'dep-001',
-    name: 'Engineering',
-    code: 'ENG',
-    head: 'Rahul Verma',
-    createdOn: '2024-01-08',
-    costCenter: 'CC-101',
-    employees: 84,
-    openRoles: 6,
-    monthlyCost: 'Rs 48.2L',
-    utilization: 89,
-    status: 'Active'
-  },
-  {
-    id: 'dep-002',
-    name: 'Human Resources',
-    code: 'HR',
-    head: 'Amit Kumar',
-    createdOn: '2024-01-15',
-    costCenter: 'CC-114',
-    employees: 18,
-    openRoles: 1,
-    monthlyCost: 'Rs 9.4L',
-    utilization: 77,
-    status: 'Active'
-  },
-  {
-    id: 'dep-003',
-    name: 'Finance',
-    code: 'FIN',
-    head: 'Neha Bansal',
-    createdOn: '2024-01-22',
-    costCenter: 'CC-118',
-    employees: 21,
-    openRoles: 2,
-    monthlyCost: 'Rs 11.8L',
-    utilization: 81,
-    status: 'Active'
-  },
-  {
-    id: 'dep-004',
-    name: 'Operations',
-    code: 'OPS',
-    head: 'Sanjay Rao',
-    createdOn: '2024-02-03',
-    costCenter: 'CC-126',
-    employees: 37,
-    openRoles: 3,
-    monthlyCost: 'Rs 19.1L',
-    utilization: 68,
-    status: 'Restructuring'
-  }
-];
+const mapApiDepartmentToRow = (department: ApiDepartment): Department => {
+  const code = department.name
+    .split(' ')
+    .filter(Boolean)
+    .map((chunk) => chunk[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 5);
+
+  return {
+    id: department.id,
+    name: department.name,
+    code: code || 'DEP',
+    head: department.headEmployee
+      ? `${department.headEmployee.firstName || ''} ${department.headEmployee.lastName || ''}`.trim()
+      : 'Unassigned',
+    headEmployeeId: department.headEmployee?.id,
+    createdOn: department.createdAt
+      ? new Date(department.createdAt).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
+    employees: department._count?.employees || 0,
+    openRoles: 0,
+    monthlyCost: 'Rs 0.0L',
+    utilization: 0,
+    status: 'Active' as const,
+  };
+};
 
 export function useDepartmentDirectory() {
-  const [departmentRows, setDepartmentRows] = useState(initialDepartments);
+  const [departmentRows, setDepartmentRows] = useState<Department[]>([]);
   const [query, setQuery] = useState('');
-  const [selectedDept, setSelectedDept] = useState(initialDepartments[0]?.name ?? '');
+  const [selectedDept, setSelectedDept] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+
+  const departmentsQuery = useQuery({
+    queryKey: ['departments'],
+    queryFn: listDepartmentsApi,
+  });
+
+  useEffect(() => {
+    if (!departmentsQuery.data) return;
+    setDepartmentRows(departmentsQuery.data.map(mapApiDepartmentToRow));
+  }, [departmentsQuery.data]);
 
   const filteredDepartments = useMemo(() => {
     if (!query.trim()) return departmentRows;
@@ -93,8 +80,7 @@ export function useDepartmentDirectory() {
     return departmentRows.filter(
       (department) =>
         department.name.toLowerCase().includes(normalizedQuery) ||
-        department.code.toLowerCase().includes(normalizedQuery) ||
-        department.head.toLowerCase().includes(normalizedQuery)
+        department.code.toLowerCase().includes(normalizedQuery)
     );
   }, [departmentRows, query]);
 
@@ -150,39 +136,45 @@ export function useDepartmentDirectory() {
     setIsFormOpen(false);
   };
 
-  const saveDepartment = (values: DepartmentFormValues) => {
+  const saveDepartment = async (values: DepartmentFormValues) => {
     const payload = {
       name: values.name.trim(),
       code: values.code.trim().toUpperCase(),
-      head: values.head.trim(),
-      createdOn: values.createdOn,
-      costCenter: values.costCenter.trim().toUpperCase()
     };
 
     if (editingDepartmentId) {
-      setDepartmentRows((prev) =>
-        prev.map((department) =>
-          department.id === editingDepartmentId ? { ...department, ...payload } : department
-        )
-      );
+      try {
+        const updated = await updateDepartmentApi(editingDepartmentId, {
+          name: payload.name,
+          description: payload.code,
+        });
 
-      if (editingDepartment && selectedDept === editingDepartment.name) {
-        setSelectedDept(payload.name);
+        const mapped = mapApiDepartmentToRow(updated);
+
+        setDepartmentRows((prev) =>
+          prev.map((department) =>
+            department.id === editingDepartmentId ? { ...department, ...mapped } : department
+          )
+        );
+
+        if (editingDepartment && selectedDept === editingDepartment.name) {
+          setSelectedDept(mapped.name);
+        }
+      } catch (error) {
+        console.error('Department update failed:', error);
       }
     } else {
-      setDepartmentRows((prev) => [
-        {
-          id: `dep-${Date.now()}`,
-          ...payload,
-          employees: 0,
-          openRoles: 0,
-          monthlyCost: 'Rs 0.0L',
-          utilization: 0,
-          status: 'Active'
-        },
-        ...prev
-      ]);
-      setSelectedDept(payload.name);
+      try {
+        const created = await createDepartmentApi({
+          name: payload.name,
+          description: payload.code,
+        });
+
+        setDepartmentRows((prev) => [mapApiDepartmentToRow(created), ...prev]);
+        setSelectedDept(payload.name);
+      } catch (error) {
+        console.error('Department create failed:', error);
+      }
     }
 
     closeFormModal();

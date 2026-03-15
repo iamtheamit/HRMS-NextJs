@@ -26,6 +26,11 @@ export type AttendanceItem = {
   employee?: AttendanceEmployee;
 };
 
+export type AttendancePunchResponse = {
+  action: 'CHECK_IN' | 'CHECK_OUT';
+  record: AttendanceItem;
+};
+
 export const listAttendanceApi = async (employeeId?: string) => {
   const res = await apiClient.get<ApiResponse<AttendanceItem[]>>('/attendance', {
     params: employeeId ? { employeeId } : undefined,
@@ -33,12 +38,7 @@ export const listAttendanceApi = async (employeeId?: string) => {
   return res.data.data;
 };
 
-export const checkInApi = async () => {
-  const res = await apiClient.post<ApiResponse<AttendanceItem>>('/attendance/check-in');
-  return res.data.data;
-};
-
-export const checkOutApi = async () => {
-  const res = await apiClient.post<ApiResponse<AttendanceItem>>('/attendance/check-out');
+export const punchAttendanceApi = async () => {
+  const res = await apiClient.post<ApiResponse<AttendancePunchResponse>>('/attendance/punch');
   return res.data.data;
 };

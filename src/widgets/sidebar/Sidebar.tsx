@@ -22,6 +22,7 @@ import clsx from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/features/auth/login/model/useLogout';
 import { routes } from '@/constants/routes';
+import { getRoleHomeRoute } from '@/features/auth/login/model/getRoleHomeRoute';
 
 type NavItem = {
   label: string;
@@ -66,6 +67,10 @@ function isActive(pathname: string, href: string) {
 }
 
 function getRoleAwareHref(item: NavItem, role?: string) {
+  if (item.href === routes.dashboard) {
+    return getRoleHomeRoute(role);
+  }
+
   if (role !== 'EMPLOYEE') {
     return item.href;
   }
@@ -139,14 +144,12 @@ export function Sidebar() {
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'U';
 
-  // Keep links pure and close drawer only after route changes.
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
   const sidebar = (
     <>
-      {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 font-bold text-white shadow-sm shadow-brand-600/30">
           H
@@ -157,7 +160,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Main nav */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-2" aria-label="Main">
         <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
           Menu
@@ -167,13 +169,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom section */}
       <div className="mt-auto space-y-1 border-t border-white/[0.06] px-3 pt-3">
         {visibleBottomNav.map((item) => (
           <SidebarLink key={item.href} item={item} pathname={pathname} role={role} />
         ))}
 
-        {/* User profile */}
         <div className="mx-0 mt-2 mb-3 flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-indigo-500 text-xs font-bold text-white">
             {initials}
@@ -198,7 +198,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         type="button"
         className="fixed top-3 left-3 z-[60] flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white/95 shadow-elevated backdrop-blur lg:hidden"
@@ -208,7 +207,6 @@ export function Sidebar() {
         {open ? <X className="h-5 w-5 text-slate-700" /> : <Menu className="h-5 w-5 text-slate-700" />}
       </button>
 
-      {/* Mobile overlay */}
       <div
         className={clsx(
           'fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden',
@@ -218,7 +216,6 @@ export function Sidebar() {
         aria-hidden="true"
       />
 
-      {/* Sidebar */}
       <aside
         className={clsx(
           'flex w-[260px] shrink-0 flex-col bg-[#0f172a]',

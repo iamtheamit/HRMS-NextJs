@@ -12,7 +12,7 @@ export type LeaveItem = {
   startDate: string;
   endDate: string;
   type: 'ANNUAL' | 'SICK' | 'UNPAID' | 'OTHER';
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'MANAGER_PENDING' | 'HR_PENDING' | 'APPROVED' | 'REJECTED';
   reason?: string | null;
   createdAt: string;
   employee?: {
@@ -40,7 +40,7 @@ const toBackendLeaveType = (type: CreateLeaveInput['type']) => {
 };
 
 export const listLeaveApi = async (employeeId?: string) => {
-  const res = await apiClient.get<ApiResponse<LeaveItem[]>>('/leave', {
+  const res = await apiClient.get<ApiResponse<LeaveItem[]>>('/leaves', {
     params: employeeId ? { employeeId } : undefined,
   });
   return res.data.data;
@@ -54,16 +54,16 @@ export const createLeaveApi = async (payload: CreateLeaveInput) => {
     reason: payload.reason,
   };
 
-  const res = await apiClient.post<ApiResponse<LeaveItem>>('/leave', body);
+  const res = await apiClient.post<ApiResponse<LeaveItem>>('/leaves', body);
   return res.data.data;
 };
 
 export const approveLeaveApi = async (id: string) => {
-  const res = await apiClient.post<ApiResponse<LeaveItem>>(`/leave/${id}/approve`);
+  const res = await apiClient.post<ApiResponse<LeaveItem>>(`/leaves/${id}/approve`);
   return res.data.data;
 };
 
 export const rejectLeaveApi = async (id: string) => {
-  const res = await apiClient.post<ApiResponse<LeaveItem>>(`/leave/${id}/reject`);
+  const res = await apiClient.post<ApiResponse<LeaveItem>>(`/leaves/${id}/reject`);
   return res.data.data;
 };

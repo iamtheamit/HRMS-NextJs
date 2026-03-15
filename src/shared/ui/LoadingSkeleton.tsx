@@ -1,3 +1,6 @@
+// LoadingSkeleton.tsx
+// Provides skeleton placeholders for loading states (tables, cards, etc.).
+
 export function LoadingSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div className="animate-pulse space-y-4">

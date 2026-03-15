@@ -1,8 +1,11 @@
-import React from 'react';
+// Table.tsx
+// Provides a reusable table component with clean SaaS styling and hover effects.
+
+import type { ReactNode } from 'react';
 import clsx from 'clsx';
 
 type TableProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   headers?: string[];
 };

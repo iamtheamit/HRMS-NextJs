@@ -7,9 +7,8 @@ import { Card } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import {
-  checkInApi,
-  checkOutApi,
   listAttendanceApi,
+  punchAttendanceApi,
   type AttendanceItem,
 } from '@/features/attendance/api/attendanceApi';
 import { useAuthStore } from '@/store/authStore';
@@ -39,15 +38,8 @@ export default function AttendanceSelfPage() {
     enabled: !!user?.employeeId,
   });
 
-  const checkInMutation = useMutation({
-    mutationFn: checkInApi,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['attendance-self', user?.employeeId] });
-    },
-  });
-
-  const checkOutMutation = useMutation({
-    mutationFn: checkOutApi,
+  const punchMutation = useMutation({
+    mutationFn: punchAttendanceApi,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['attendance-self', user?.employeeId] });
     },
@@ -150,18 +142,10 @@ export default function AttendanceSelfPage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   type="button"
-                  onClick={() => checkInMutation.mutate()}
-                  disabled={!canCheckIn || checkInMutation.isPending || checkOutMutation.isPending}
+                  onClick={() => punchMutation.mutate()}
+                  disabled={(!canCheckIn && !canCheckOut) || punchMutation.isPending}
                 >
-                  Check In
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => checkOutMutation.mutate()}
-                  disabled={!canCheckOut || checkOutMutation.isPending || checkInMutation.isPending}
-                >
-                  Check Out
+                  {canCheckIn ? 'Check In' : canCheckOut ? 'Check Out' : 'Attendance Closed'}
                 </Button>
               </div>
             </Card>

@@ -1,8 +1,11 @@
-import React from 'react';
+// Card.tsx
+// Provides a reusable card container with flat, clean SaaS styling.
+
+import type { ReactNode } from 'react';
 import clsx from 'clsx';
 
 type CardProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   noPadding?: boolean;
 };

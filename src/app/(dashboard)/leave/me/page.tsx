@@ -14,8 +14,20 @@ import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const statusVariant = {
   PENDING: 'warning' as const,
+  MANAGER_PENDING: 'warning' as const,
+  HR_PENDING: 'warning' as const,
   APPROVED: 'success' as const,
   REJECTED: 'danger' as const,
+};
+
+const isPendingStatus = (status: LeaveItem['status']) => {
+  return status === 'PENDING' || status === 'MANAGER_PENDING' || status === 'HR_PENDING';
+};
+
+const formatStatusLabel = (status: LeaveItem['status']) => {
+  if (status === 'MANAGER_PENDING') return 'PENDING (MANAGER)';
+  if (status === 'HR_PENDING') return 'PENDING (HR)';
+  return status;
 };
 
 const toUiType = (type: LeaveItem['type']) => {
@@ -64,7 +76,7 @@ export default function LeaveSelfPage() {
 
   const stats = useMemo(() => {
     return {
-      pending: requests.filter((request) => request.status === 'PENDING').length,
+      pending: requests.filter((request) => isPendingStatus(request.status)).length,
       approved: requests.filter((request) => request.status === 'APPROVED').length,
       rejected: requests.filter((request) => request.status === 'REJECTED').length,
       totalDays: requests.reduce((sum, request) => sum + countDays(request.startDate, request.endDate), 0),
@@ -145,7 +157,7 @@ export default function LeaveSelfPage() {
                     <p className="text-xs text-slate-500">{new Date(request.startDate).toLocaleDateString()} to {new Date(request.endDate).toLocaleDateString()}</p>
                     <p className="mt-2 text-sm text-slate-600">{request.reason || '-'}</p>
                   </div>
-                  <Badge variant={statusVariant[request.status]}>{request.status}</Badge>
+                  <Badge variant={statusVariant[request.status]}>{formatStatusLabel(request.status)}</Badge>
                 </div>
               </div>
             ))}

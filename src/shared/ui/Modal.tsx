@@ -1,8 +1,12 @@
-'use client';
+// Modal.tsx
+// Provides a reusable modal component for dialogs and confirmations.
+
+ 'use client';
 
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
+import type { ReactNode } from 'react';
 
 type ModalProps = {
   open: boolean;

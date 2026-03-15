@@ -1,7 +1,10 @@
-import React from 'react';
+// Input.tsx
+// Provides a reusable input component with label and error display.
+
+import type { InputHTMLAttributes } from 'react';
 import clsx from 'clsx';
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   error?: string;
 };

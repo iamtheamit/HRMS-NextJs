@@ -1,11 +1,17 @@
 import { apiClient } from '@/shared/api/apiClient';
-import type { EmployeeListResponse } from '../types/employee.types';
+import type { Employee } from '../types/employee.types';
+
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
 
 export const fetchEmployees = async (page = 1, size = 10) => {
-  const res = await apiClient.get<EmployeeListResponse>('/employees', {
+  const res = await apiClient.get<ApiResponse<Employee[]>>('/employees', {
     params: { page, size }
   });
-  return res.data;
+  return res.data.data;
 };
 
 export default { fetchEmployees };

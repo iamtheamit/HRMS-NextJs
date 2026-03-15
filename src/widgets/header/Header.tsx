@@ -6,6 +6,10 @@ import { Bell, Search, Settings } from 'lucide-react';
 
 const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/super-admin': 'Super Admin Dashboard',
+  '/hr-admin': 'HR Admin Dashboard',
+  '/manager': 'Manager Dashboard',
+  '/employee': 'Employee Dashboard',
   '/employees': 'Employees',
   '/departments': 'Departments',
   '/attendance': 'Attendance',
@@ -38,7 +42,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
       <div className="flex items-center justify-between gap-4 py-3 pr-4 pl-16 sm:px-6 lg:px-8">
-        {/* Left: breadcrumb + title */}
         <div className="min-w-0">
           <nav className="flex items-center gap-1 text-xs text-slate-400">
             <span>Home</span>
@@ -52,9 +55,7 @@ export function Header() {
           <h1 className="mt-0.5 truncate text-lg font-semibold text-slate-900">{title}</h1>
         </div>
 
-        {/* Right: search + actions */}
         <div className="flex items-center gap-2">
-          {/* Search (desktop only) */}
           <div className="relative hidden md:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -81,7 +82,6 @@ export function Header() {
             <Settings className="h-[18px] w-[18px]" />
           </button>
 
-          {/* Avatar */}
           <div className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-indigo-500 text-xs font-bold text-white">
             AK
           </div>

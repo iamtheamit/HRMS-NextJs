@@ -1,3 +1,6 @@
+// ChartCard.tsx
+// Wraps Recharts visualizations inside a styled card with a header.
+
 'use client';
 
 import type { ReactNode } from 'react';

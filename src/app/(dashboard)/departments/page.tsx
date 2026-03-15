@@ -1,14 +1,9 @@
 "use client";
 
-import { useMemo } from 'react';
 import {
   BarChart3,
-  Briefcase,
-  Building2,
   Pencil,
   Trash2,
-  UserCog,
-  Users2
 } from 'lucide-react';
 import { Card } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/Button';
@@ -30,8 +25,6 @@ export default function DepartmentsPage() {
   const {
     departmentRows,
     filteredDepartments,
-    totalEmployees,
-    totalOpenRoles,
     query,
     setQuery,
     selectedDept,
@@ -69,56 +62,6 @@ export default function DepartmentsPage() {
             New Department
           </Button>
         </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="bg-gradient-to-br from-white to-brand-50/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Departments</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">{departmentRows.length}</p>
-            </div>
-            <div className="rounded-xl bg-brand-50 p-2.5 text-brand-700">
-              <Building2 className="h-5 w-5" />
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Employees Assigned</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">{totalEmployees}</p>
-            </div>
-            <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700">
-              <Users2 className="h-5 w-5" />
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Open Positions</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">{totalOpenRoles}</p>
-            </div>
-            <div className="rounded-xl bg-amber-50 p-2.5 text-amber-700">
-              <Briefcase className="h-5 w-5" />
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Assignments Today</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">14</p>
-            </div>
-            <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-700">
-              <UserCog className="h-5 w-5" />
-            </div>
-          </div>
-        </Card>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
