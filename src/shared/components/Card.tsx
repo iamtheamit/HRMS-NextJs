@@ -1,5 +1,5 @@
 // Card.tsx
-// Provides a reusable card container with soft shadows and rounded corners.
+// Provides a reusable card container with flat, clean SaaS styling.
 
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
@@ -13,7 +13,7 @@ export const Card = ({ children, className }: CardProps) => {
   return (
     <div
       className={clsx(
-        'rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 backdrop-blur transition hover:-translate-y-[1px] hover:shadow-md',
+        'rounded-xl border border-gray-200 bg-white p-5 shadow-sm overflow-hidden max-w-full',
         className
       )}
     >

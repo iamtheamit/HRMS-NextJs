@@ -5,7 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
-import { employeeService } from '@/src/modules/employee/services/employeeService';
+import { employeeService } from '@/modules/employee/services/employeeService';
 
 type EmployeeDetailsPageProps = {
   params: { id: string };
@@ -21,9 +21,9 @@ export default function EmployeeDetailsPage({
 
   if (isLoading) {
     return (
-      <main className="mx-auto max-w-4xl px-6 py-8">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 overflow-hidden">
         <p className="text-sm text-slate-500">Loading employee...</p>
-      </main>
+      </div>
     );
   }
 
@@ -32,7 +32,7 @@ export default function EmployeeDetailsPage({
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 overflow-hidden">
       <h1 className="text-xl font-semibold text-slate-900">{data.name}</h1>
       <p className="mt-1 text-sm text-slate-600">{data.email}</p>
       {(data.designation || data.department) && (
@@ -40,7 +40,6 @@ export default function EmployeeDetailsPage({
           {[data.designation, data.department].filter(Boolean).join(' · ')}
         </p>
       )}
-    </main>
+    </div>
   );
 }
-

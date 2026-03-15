@@ -16,15 +16,32 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { DashboardShell } from '@/components/layout/DashboardShell';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { ChartCard } from '@/shared/components/ChartCard';
+import { SearchBar } from '@/shared/components/SearchBar';
+import { Button } from '@/shared/components/Button';
+import { Filter, FileDown, Plus } from 'lucide-react';
 
 const kpiData = [
-  { label: 'Total Employees', value: 248, trend: '+12 this month' },
-  { label: 'Open Leave Requests', value: 18, trend: '5 awaiting approval' },
-  { label: 'New Hires', value: 7, trend: 'Onboarded this week' }
+  {
+    label: 'Total employees',
+    value: 678,
+    trend: '+30% last month',
+    accent: 'border-t-blue-500'
+  },
+  {
+    label: 'Number of leaves',
+    value: 23,
+    trend: '+10% last month',
+    accent: 'border-t-red-400'
+  },
+  {
+    label: 'New employees',
+    value: 31,
+    trend: '+13% last month',
+    accent: 'border-t-green-400'
+  }
 ];
 
 const distributionData = [
@@ -57,10 +74,41 @@ const pieColors = ['#2563eb', '#22c55e', '#f97316', '#0ea5e9', '#6366f1'];
 
 export default function DashboardPage() {
   return (
-    <DashboardShell title="People overview">
-      <section className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-6">
+      {/* Toolbar: title left, filter/export/search aligned right */}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Overview</p>
+          <p className="text-xs text-slate-400">
+            High-level snapshot of your people operations.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="w-full sm:w-56">
+            <SearchBar placeholder="Search employees or actions" />
+          </div>
+          <Button variant="secondary" className="inline-flex items-center gap-2 text-xs">
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button>
+          <Button variant="secondary" className="inline-flex items-center gap-2 text-xs">
+            <FileDown className="h-4 w-4" />
+            Export
+          </Button>
+          <Button className="inline-flex items-center gap-2 text-xs">
+            <Plus className="h-4 w-4" />
+            Add New
+          </Button>
+        </div>
+      </section>
+
+      {/* Stats cards: grid-cols-3, colored top borders */}
+      <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {kpiData.map((kpi) => (
-          <Card key={kpi.label} className="relative overflow-hidden">
+          <Card
+            key={kpi.label}
+            className={`relative overflow-hidden border-t-4 ${kpi.accent}`}
+          >
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
               {kpi.label}
             </p>
@@ -85,12 +133,13 @@ export default function DashboardPage() {
         ))}
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-3">
+      {/* Analytics charts: grid-cols-2 */}
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartCard
           title="Department distribution"
           description="Headcount by primary department"
         >
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={192}>
             <PieChart>
               <Pie
                 data={distributionData}
@@ -116,7 +165,7 @@ export default function DashboardPage() {
           title="Monthly activity"
           description="Check-ins, performance reviews, and updates"
         >
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={192}>
             <BarChart data={activityData}>
               <XAxis dataKey="month" />
               <YAxis />
@@ -129,8 +178,9 @@ export default function DashboardPage() {
         <ChartCard
           title="Training cost"
           description="Monthly spend per employee (k$)"
+          className="lg:col-span-2"
         >
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={192}>
             <LineChart data={trainingData}>
               <XAxis dataKey="month" />
               <YAxis />
@@ -147,8 +197,9 @@ export default function DashboardPage() {
         </ChartCard>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[2fr,1fr]">
-        <Card>
+      {/* Lower section: grid-cols-3 */}
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -170,7 +221,7 @@ export default function DashboardPage() {
             ].map((label) => (
               <div
                 key={label}
-                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 transition hover:border-slate-200 hover:bg-white"
+                className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 transition hover:border-slate-200 hover:bg-white sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="text-sm text-slate-900">{label}</p>
@@ -192,23 +243,21 @@ export default function DashboardPage() {
             Quick view of people-related updates
           </p>
           <ul className="mt-3 space-y-2 text-sm">
-            <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+            <li className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-slate-800">3 performance reviews due</span>
               <Badge variant="danger">Due today</Badge>
             </li>
-            <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+            <li className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-slate-800">2 onboarding plans in draft</span>
               <Badge>Draft</Badge>
             </li>
-            <li className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+            <li className="flex flex-col gap-1 rounded-lg bg-slate-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-slate-800">5 learning paths recommended</span>
               <Badge variant="success">New</Badge>
             </li>
           </ul>
         </Card>
       </section>
-    </DashboardShell>
+    </div>
   );
 }
-
-

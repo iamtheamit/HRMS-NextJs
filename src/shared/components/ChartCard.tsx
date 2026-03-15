@@ -10,11 +10,12 @@ type ChartCardProps = {
   title: string;
   description?: string;
   children: ReactNode;
+  className?: string;
 };
 
-export const ChartCard = ({ title, description, children }: ChartCardProps) => {
+export const ChartCard = ({ title, description, children, className }: ChartCardProps) => {
   return (
-    <Card className="h-full">
+    <Card className={`h-full overflow-hidden ${className ?? ''}`}>
       <div className="mb-3 flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -25,7 +26,7 @@ export const ChartCard = ({ title, description, children }: ChartCardProps) => {
           )}
         </div>
       </div>
-      <div className="h-48">{children}</div>
+      <div className="h-48 max-w-full overflow-hidden">{children}</div>
     </Card>
   );
 };
