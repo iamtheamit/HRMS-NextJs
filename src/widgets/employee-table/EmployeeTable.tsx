@@ -9,7 +9,7 @@ export function EmployeeTable() {
 
   if (isLoading) return <div>Loading...</div>;
 
-  const rows = data?.data ?? [];
+  const rows = data ?? [];
 
   return (
     <Table headers={[ 'Name', 'Email', 'Role' ]}>
