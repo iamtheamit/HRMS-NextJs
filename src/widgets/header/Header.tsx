@@ -11,12 +11,16 @@ const titleMap: Record<string, string> = {
   '/attendance': 'Attendance',
   '/leave': 'Leave Management',
   '/tasks': 'Task Assignment',
+  '/salary': 'Salary Management',
+  '/payroll': 'Payroll Management',
   '/settings': 'Settings'
 };
 
 function formatTitle(pathname: string) {
   if (titleMap[pathname]) return titleMap[pathname];
   if (pathname.startsWith('/employees/')) return 'Employee Details';
+  if (pathname.startsWith('/salary/')) return 'Salary Details';
+  if (pathname.startsWith('/payroll/')) return 'Payroll Details';
   const last = pathname.split('/').filter(Boolean).pop() || 'Dashboard';
   return last.charAt(0).toUpperCase() + last.slice(1);
 }

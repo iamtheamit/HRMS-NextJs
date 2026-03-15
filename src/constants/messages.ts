@@ -7,6 +7,11 @@ export const messages = {
     loginFailed: 'Invalid credentials, please try again.',
     logoutSuccess: 'You have been logged out.'
   },
+  payroll: {
+    calculateSuccess: 'Salary calculated successfully.',
+    slipGenerated: 'Salary slip generated successfully.',
+    payrollProcessed: 'Payroll processed for selected month.'
+  },
   errors: {
     generic: 'Something went wrong. Please try again.',
     network: 'Network error. Please check your connection.'

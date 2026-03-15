@@ -1,7 +1,13 @@
 import apiClient from '@/shared/api/apiClient';
-import type { CurrentUserResponse } from '../types/user.types';
+import type { User } from '../types/user.types';
 
-export async function fetchCurrentUser() {
-  const res = await apiClient.get<CurrentUserResponse>('/auth/me');
-  return res.data;
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
+export async function fetchCurrentUser(): Promise<User> {
+  const res = await apiClient.get<ApiResponse<User>>('/auth/me');
+  return res.data.data;
 }

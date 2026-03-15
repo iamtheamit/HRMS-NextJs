@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { useLogin } from '@/features/auth/login/model/useLogin';
+import { routes } from '@/constants/routes';
 
 export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState('');
@@ -48,9 +50,9 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
           <input type="checkbox" className="h-3.5 w-3.5 rounded border-slate-300" />
           Remember me
         </label>
-        <a href="#" className="font-medium text-brand-600 hover:text-brand-700">
+        <Link href={routes.forgotPassword} className="font-medium text-brand-600 hover:text-brand-700">
           Forgot password?
-        </a>
+        </Link>
       </div>
       <Button type="submit" loading={loginMutation.isPending} className="w-full" size="lg">
         Sign in

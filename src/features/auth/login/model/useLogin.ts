@@ -8,14 +8,16 @@ export function useLogin() {
   return useMutation({
     mutationFn: (payload: LoginRequest) => loginApi(payload),
     onSuccess: (data) => {
-      if (!data?.token) return;
-      const fallbackUser = {
-        id: 'current-user',
-        name: data.user?.name ?? 'Authenticated User',
-        email: data.user?.email ?? '',
-        role: data.user?.role
-      };
-      setAuth({ user: data.user ?? fallbackUser, token: data.token });
+      if (!data?.user) return;
+      const name = data.user.name || [data.user.firstName, data.user.lastName].filter(Boolean).join(' ') || 'Authenticated User';
+      setAuth({
+        user: {
+          id: data.user.id ?? 'current-user',
+          name,
+          email: data.user.email ?? '',
+          role: data.user.role
+        }
+      });
     }
   });
 }

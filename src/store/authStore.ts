@@ -1,5 +1,7 @@
 // authStore.ts
 // Manages global authentication state using Zustand.
+// Tokens are stored in HttpOnly cookies set by the backend — this store holds
+// only the in-memory user profile and authentication flag.
 
 import { create } from 'zustand';
 
@@ -12,27 +14,19 @@ export type AuthUser = {
 
 type AuthState = {
   user: AuthUser | null;
-  token: string | null;
   isAuthenticated: boolean;
-  setAuth: (payload: { user: AuthUser; token: string }) => void;
+  setAuth: (payload: { user: AuthUser }) => void;
   clearAuth: () => void;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
   isAuthenticated: false,
-  setAuth: ({ user, token }) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('hrms_token', token);
-    }
-    set({ user, token, isAuthenticated: true });
+  setAuth: ({ user }) => {
+    set({ user, isAuthenticated: true });
   },
   clearAuth: () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('hrms_token');
-    }
-    set({ user: null, token: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false });
   }
 }));
 

@@ -10,6 +10,8 @@ import {
   CalendarCheck2,
   CalendarClock,
   ClipboardList,
+  Wallet,
+  HandCoins,
   Settings,
   Menu,
   X,
@@ -17,25 +19,45 @@ import {
   ChevronRight
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuthStore } from '@/store/authStore';
+import { useLogout } from '@/features/auth/login/model/useLogout';
 
 type NavItem = {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  roles?: string[];
 };
 
 const mainNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Employees', href: '/employees', icon: Users },
-  { label: 'Departments', href: '/departments', icon: Building2 },
-  { label: 'Attendance', href: '/attendance', icon: CalendarCheck2 },
-  { label: 'Leave', href: '/leave', icon: CalendarClock },
-  { label: 'Tasks', href: '/tasks', icon: ClipboardList }
+  { label: 'Employees', href: '/employees', icon: Users, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] },
+  { label: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'HR_ADMIN'] },
+  { label: 'Attendance', href: '/attendance', icon: CalendarCheck2, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
+  { label: 'Leave', href: '/leave', icon: CalendarClock, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
+  { label: 'Tasks', href: '/tasks', icon: ClipboardList, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] },
+  { label: 'Salary', href: '/salary', icon: Wallet, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] },
+  { label: 'Payroll', href: '/payroll', icon: HandCoins, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] }
 ];
 
 const bottomNav: NavItem[] = [
-  { label: 'Settings', href: '/settings', icon: Settings }
+  { label: 'Settings', href: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] }
 ];
+
+const formatRole = (role?: string) => {
+  if (!role) return 'User';
+  return role
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
+const canAccess = (item: NavItem, role?: string) => {
+  if (!item.roles || item.roles.length === 0) return true;
+  if (!role) return false;
+  return item.roles.includes(role);
+};
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
@@ -78,7 +100,20 @@ function SidebarLink({
 export function Sidebar() {
   const pathname = usePathname() || '/dashboard';
   const [open, setOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const logoutMutation = useLogout();
   const closeMobile = () => setOpen(false);
+  const role = user?.role;
+  const visibleMainNav = mainNav.filter((item) => canAccess(item, role));
+  const visibleBottomNav = bottomNav.filter((item) => canAccess(item, role));
+  const userName = user?.name || 'User';
+  const userRole = formatRole(role);
+  const initials = userName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U';
 
   // Keep links pure and close drawer only after route changes.
   useEffect(() => {
@@ -103,30 +138,32 @@ export function Sidebar() {
         <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
           Menu
         </p>
-        {mainNav.map((item) => (
+        {visibleMainNav.map((item) => (
           <SidebarLink key={item.href} item={item} pathname={pathname} />
         ))}
       </nav>
 
       {/* Bottom section */}
       <div className="mt-auto space-y-1 border-t border-white/[0.06] px-3 pt-3">
-        {bottomNav.map((item) => (
+        {visibleBottomNav.map((item) => (
           <SidebarLink key={item.href} item={item} pathname={pathname} />
         ))}
 
         {/* User profile */}
         <div className="mx-0 mt-2 mb-3 flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-indigo-500 text-xs font-bold text-white">
-            AK
+            {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-200">Amit Kumar</p>
-            <p className="truncate text-[11px] text-slate-500">HR Manager</p>
+            <p className="truncate text-sm font-medium text-slate-200">{userName}</p>
+            <p className="truncate text-[11px] text-slate-500">{userRole}</p>
           </div>
           <button
             type="button"
             className="shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-300"
             aria-label="Sign out"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
           >
             <LogOut className="h-4 w-4" />
           </button>

@@ -6,16 +6,26 @@ export type LoginRequest = {
 };
 
 export type LoginResponse = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
   user?: {
     id: string;
-    name: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     role?: string;
   };
 };
 
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
 export async function loginApi(payload: LoginRequest) {
-  const res = await apiClient.post<LoginResponse>('/auth/login', payload);
-  return res.data;
+  const res = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', payload);
+  return res.data.data;
 }
