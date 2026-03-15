@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 import {
   Line,
   LineChart,
@@ -26,6 +29,8 @@ import {
   ArrowDownRight,
   MoreHorizontal
 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { routes } from '@/constants/routes';
 
 /* ── Static data ── */
 
@@ -113,6 +118,19 @@ const statusBadge: Record<string, { variant: 'success' | 'danger' | 'warning'; l
 /* ── Page ── */
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const role = useAuthStore((state) => state.user?.role);
+
+  useEffect(() => {
+    if (role === 'EMPLOYEE') {
+      router.replace(routes.attendanceMe);
+    }
+  }, [role, router]);
+
+  if (role === 'EMPLOYEE') {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       {/* KPI cards */}

@@ -24,6 +24,7 @@ import {
 import { DeleteEmployeeButton } from '@/features/employee/delete/ui/DeleteEmployeeButton';
 import { useUpdateEmployee } from '@/features/employee/update/model/useUpdateEmployee';
 import { AddEmployeeWizard } from '@/features/employee/create/ui/AddEmployeeWizard';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 type EmployeeFormState = {
   id?: string;
@@ -117,7 +118,8 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Employee Management</h2>
@@ -359,6 +361,7 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

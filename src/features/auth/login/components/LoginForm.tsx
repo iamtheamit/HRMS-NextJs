@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { useLogin } from '@/features/auth/login/model/useLogin';
+import type { LoginResponse } from '@/features/auth/login/api/loginApi';
 import { routes } from '@/constants/routes';
 
-export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
+export function LoginForm({ onSuccess }: { onSuccess?: (role?: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,8 +18,8 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     e.preventDefault();
     setError(null);
     try {
-      await loginMutation.mutateAsync({ email, password });
-      onSuccess && onSuccess();
+      const data: LoginResponse = await loginMutation.mutateAsync({ email, password });
+      onSuccess && onSuccess(data.user?.role);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Unable to sign in');
     }

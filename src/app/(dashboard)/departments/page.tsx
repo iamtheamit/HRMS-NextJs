@@ -16,6 +16,7 @@ import { Badge } from '@/shared/ui/Badge';
 import { SearchBar } from '@/shared/ui/SearchBar';
 import { AddDepartmentWizard } from '@/features/department/create/ui/AddDepartmentWizard';
 import { useDepartmentDirectory } from '@/features/department/create/model/useDepartmentDirectory';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const employees = [
   'Ananya Sharma',
@@ -48,7 +49,8 @@ export default function DepartmentsPage() {
   } = useDepartmentDirectory();
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN']}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Department Management</h2>
@@ -276,6 +278,7 @@ export default function DepartmentsPage() {
         onClose={closeFormModal}
         onSubmit={saveDepartment}
       />
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

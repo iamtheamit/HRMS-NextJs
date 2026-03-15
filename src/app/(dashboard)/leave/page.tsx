@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { LeaveApplicationWizard } from '@/features/leave/ui/LeaveApplicationWizard';
 import { useLeaveManagement, type LeaveStatus } from '@/features/leave/model/useLeaveManagement';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
+import { routes } from '@/constants/routes';
 
 const statusMap: Record<LeaveStatus, { variant: 'success' | 'warning' | 'danger' }> = {
   Pending: { variant: 'warning' },
@@ -57,6 +59,7 @@ export default function LeavePage() {
   ];
 
   return (
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']} redirectTo={routes.leaveMe}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -299,5 +302,6 @@ export default function LeavePage() {
         onSubmit={submitApplication}
       />
     </div>
+    </RoleGuard>
   );
 }

@@ -8,6 +8,8 @@ import { SearchBar } from '@/shared/ui/SearchBar';
 import { TaskAssignmentWizard } from '@/features/task/ui/TaskAssignmentWizard';
 import { useTaskManagement, type TaskPriority, type TaskStatus } from '@/features/task/model/useTaskManagement';
 import { CalendarDays, CheckCircle2, ClipboardList, Plus, Timer, TrendingUp } from 'lucide-react';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
+import { routes } from '@/constants/routes';
 
 const statusPills: TaskStatus[] = ['To Do', 'In Progress', 'Completed'];
 const priorityPills: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
@@ -42,7 +44,8 @@ export default function TasksPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']} redirectTo={routes.tasksMe}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Task Assignment</h2>
@@ -233,6 +236,7 @@ export default function TasksPage() {
         onClose={closeAssignment}
         onSubmit={assignTask}
       />
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

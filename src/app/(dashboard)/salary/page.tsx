@@ -9,6 +9,7 @@ import { useSalaryManagement } from '@/features/salary/model/useSalaryManagement
 import { routes } from '@/constants/routes';
 import type { SalaryStatus } from '@/entities/salary/types/salary.types';
 import { Calculator, Download, Eye, FileText, Landmark, Wallet } from 'lucide-react';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const statusVariant: Record<SalaryStatus, 'warning' | 'soft' | 'success'> = {
   Draft: 'warning',
@@ -45,7 +46,8 @@ export default function SalaryPage() {
   } = useSalaryManagement();
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Salary Management</h2>
@@ -243,6 +245,7 @@ export default function SalaryPage() {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

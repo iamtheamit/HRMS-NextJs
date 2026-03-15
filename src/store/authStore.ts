@@ -7,6 +7,7 @@ import { create } from 'zustand';
 
 export type AuthUser = {
   id: string;
+  employeeId?: string | null;
   name: string;
   email: string;
   role?: string;

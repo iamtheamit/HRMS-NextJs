@@ -4,6 +4,7 @@ import { Card } from '@/shared/ui/Card';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { Bell, Shield, Palette, Globe } from 'lucide-react';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const sections = [
   {
@@ -38,7 +39,8 @@ const sections = [
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']}>
+      <div className="space-y-6">
       {/* Profile section */}
       <Card>
         <h2 className="text-base font-semibold text-slate-900">Profile</h2>
@@ -76,6 +78,7 @@ export default function SettingsPage() {
           );
         })}
       </section>
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

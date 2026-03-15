@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { HolidayCalendarPanel } from '@/features/calendar/ui/HolidayCalendarPanel';
 import { useAttendanceManagement, type AttendanceStatus } from '@/features/attendance/model/useAttendanceManagement';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
+import { routes } from '@/constants/routes';
 
 const statusMap: Record<AttendanceStatus, { variant: 'success' | 'warning' | 'danger' | 'soft'; chip: string }> = {
   Present: { variant: 'success', chip: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
@@ -92,6 +94,7 @@ export default function AttendancePage() {
   ];
 
   return (
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']} redirectTo={routes.attendanceMe}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
@@ -400,5 +403,6 @@ export default function AttendancePage() {
         </div>
       </Card>
     </div>
+    </RoleGuard>
   );
 }

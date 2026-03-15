@@ -11,6 +11,7 @@ export type LoginResponse = {
   expiresAt: string;
   user?: {
     id: string;
+    employeeId?: string | null;
     name?: string;
     firstName?: string;
     lastName?: string;

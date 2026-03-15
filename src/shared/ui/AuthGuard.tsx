@@ -24,6 +24,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         setAuth({
           user: {
             id: user.id,
+            employeeId: user.employeeId,
             name: user.name || [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User',
             email: user.email,
             role: user.role,

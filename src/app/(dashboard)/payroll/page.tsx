@@ -9,6 +9,7 @@ import { usePayrollManagement } from '@/features/payroll/model/usePayrollManagem
 import { routes } from '@/constants/routes';
 import type { PayrollStatus } from '@/entities/payroll/types/payroll.types';
 import { CircleCheckBig, History, IndianRupee, ReceiptText } from 'lucide-react';
+import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const statusVariant: Record<PayrollStatus, 'warning' | 'soft' | 'success'> = {
   Draft: 'warning',
@@ -37,7 +38,8 @@ export default function PayrollPage() {
   } = usePayrollManagement();
 
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER']}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Payroll Processing</h2>
@@ -194,6 +196,7 @@ export default function PayrollPage() {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

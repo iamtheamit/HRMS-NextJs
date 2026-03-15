@@ -13,6 +13,7 @@ export function useLogin() {
       setAuth({
         user: {
           id: data.user.id ?? 'current-user',
+          employeeId: data.user.employeeId,
           name,
           email: data.user.email ?? '',
           role: data.user.role

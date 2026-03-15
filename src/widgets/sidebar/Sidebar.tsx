@@ -21,6 +21,7 @@ import {
 import clsx from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/features/auth/login/model/useLogout';
+import { routes } from '@/constants/routes';
 
 type NavItem = {
   label: string;
@@ -35,7 +36,7 @@ const mainNav: NavItem[] = [
   { label: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'HR_ADMIN'] },
   { label: 'Attendance', href: '/attendance', icon: CalendarCheck2, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
   { label: 'Leave', href: '/leave', icon: CalendarClock, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
-  { label: 'Tasks', href: '/tasks', icon: ClipboardList, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] },
+  { label: 'Tasks', href: '/tasks', icon: ClipboardList, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
   { label: 'Salary', href: '/salary', icon: Wallet, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] },
   { label: 'Payroll', href: '/payroll', icon: HandCoins, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] }
 ];
@@ -64,19 +65,42 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function getRoleAwareHref(item: NavItem, role?: string) {
+  if (role !== 'EMPLOYEE') {
+    return item.href;
+  }
+
+  if (item.href === routes.attendance) {
+    return routes.attendanceMe;
+  }
+
+  if (item.href === routes.leave) {
+    return routes.leaveMe;
+  }
+
+  if (item.href === routes.tasks) {
+    return routes.tasksMe;
+  }
+
+  return item.href;
+}
+
 function SidebarLink({
   item,
-  pathname
+  pathname,
+  role
 }: {
   item: NavItem;
   pathname: string;
+  role?: string;
 }) {
+  const href = getRoleAwareHref(item, role);
   const Icon = item.icon;
-  const active = isActive(pathname, item.href);
+  const active = isActive(pathname, href);
 
   return (
     <Link
-      href={item.href}
+      href={href}
       aria-current={active ? 'page' : undefined}
       className={clsx(
         'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
@@ -139,14 +163,14 @@ export function Sidebar() {
           Menu
         </p>
         {visibleMainNav.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} />
+          <SidebarLink key={item.href} item={item} pathname={pathname} role={role} />
         ))}
       </nav>
 
       {/* Bottom section */}
       <div className="mt-auto space-y-1 border-t border-white/[0.06] px-3 pt-3">
         {visibleBottomNav.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} />
+          <SidebarLink key={item.href} item={item} pathname={pathname} role={role} />
         ))}
 
         {/* User profile */}
