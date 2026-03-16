@@ -44,6 +44,12 @@ const countDays = (startDate: string, endDate: string) => {
   return raw > 0 ? raw : 0;
 };
 
+const leavePolicy = {
+  CL: 12,
+  SL: 10,
+  EL: 18,
+} as const;
+
 export default function LeaveSelfPage() {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -81,6 +87,52 @@ export default function LeaveSelfPage() {
       rejected: requests.filter((request) => request.status === 'REJECTED').length,
       totalDays: requests.reduce((sum, request) => sum + countDays(request.startDate, request.endDate), 0),
     };
+  }, [requests]);
+
+  const leaveBalance = useMemo(() => {
+    const approvedDays = {
+      CL: 0,
+      SL: 0,
+      EL: 0,
+    };
+
+    requests.forEach((request) => {
+      if (request.status !== 'APPROVED') return;
+      const days = countDays(request.startDate, request.endDate);
+
+      if (request.type === 'SICK') {
+        approvedDays.SL += days;
+        return;
+      }
+
+      if (request.type === 'ANNUAL') {
+        approvedDays.EL += days;
+        return;
+      }
+
+      approvedDays.CL += days;
+    });
+
+    return [
+      {
+        label: 'Casual Leave (CL)',
+        total: leavePolicy.CL,
+        used: approvedDays.CL,
+        remaining: Math.max(leavePolicy.CL - approvedDays.CL, 0),
+      },
+      {
+        label: 'Sick Leave (SL)',
+        total: leavePolicy.SL,
+        used: approvedDays.SL,
+        remaining: Math.max(leavePolicy.SL - approvedDays.SL, 0),
+      },
+      {
+        label: 'Earned Leave (EL)',
+        total: leavePolicy.EL,
+        used: approvedDays.EL,
+        remaining: Math.max(leavePolicy.EL - approvedDays.EL, 0),
+      },
+    ];
   }, [requests]);
 
   const submitSelfRequest = (form: LeaveRequestForm) => {
@@ -139,6 +191,38 @@ export default function LeaveSelfPage() {
             </Card>
           </section>
         )}
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">My Leave Balance</h3>
+              <p className="text-xs text-slate-500">Allocated, used, and remaining leave days.</p>
+            </div>
+            <Badge variant="soft">Policy Year</Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {leaveBalance.map((balance) => (
+              <div key={balance.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <p className="text-sm font-medium text-slate-900">{balance.label}</p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-[11px] text-slate-500">Total</p>
+                    <p className="text-base font-semibold text-slate-900">{balance.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-500">Used</p>
+                    <p className="text-base font-semibold text-amber-600">{balance.used}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-500">Remaining</p>
+                    <p className="text-base font-semibold text-emerald-600">{balance.remaining}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         <Card noPadding>
           <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
