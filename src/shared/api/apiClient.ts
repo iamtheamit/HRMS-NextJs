@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || process.env.BASE_URL || 'https://hrms-node-steel.vercel.app/api';
+const apiKey = process.env.NEXT_PUBLIC_API_KEY || '';
 
 export const apiClient = axios.create({
   baseURL,
@@ -9,6 +10,15 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json'
   }
+});
+
+apiClient.interceptors.request.use((config) => {
+  if (apiKey) {
+    config.headers = config.headers || {};
+    config.headers['x-api-key'] = apiKey;
+  }
+
+  return config;
 });
 
 // --- 401 auto-refresh interceptor ---
