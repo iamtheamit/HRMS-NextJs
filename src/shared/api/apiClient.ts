@@ -1,6 +1,9 @@
 import axios from 'axios';
 
+// API base URL resolved from environment configuration
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || process.env.BASE_URL || 'https://hrms-node-steel.vercel.app/api';
+
+// API key from environment for x-api-key header authentication
 const apiKey = process.env.NEXT_PUBLIC_API_KEY || '';
 
 export const apiClient = axios.create({
@@ -12,9 +15,12 @@ export const apiClient = axios.create({
   }
 });
 
+// Attach API key to all outgoing requests for backend validation
+// This ensures every API call includes the security header
 apiClient.interceptors.request.use((config) => {
   if (apiKey) {
     config.headers = config.headers || {};
+    // Include x-api-key header for backend API key middleware validation
     config.headers['x-api-key'] = apiKey;
   }
 
