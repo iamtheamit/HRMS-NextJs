@@ -1,17 +1,22 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/features/auth/login/components/LoginForm';
 import { AuthWelcomePanel } from '@/features/auth/login/components/AuthWelcomePanel';
 import { getRoleHomeRoute } from '@/features/auth/login/model/getRoleHomeRoute';
-import { routes } from '@/constants/routes';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userRole = useAuthStore((state) => state.user?.role);
+  const activationState = searchParams.get('activated') === '1'
+    ? 'activated'
+    : searchParams.get('activation') === 'invalid'
+      ? 'invalid'
+      : null;
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -35,7 +40,10 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-8">
-            <LoginForm onSuccess={(role) => router.replace(getRoleHomeRoute(role))} />
+            <LoginForm
+              activationState={activationState}
+              onSuccess={(role) => router.replace(getRoleHomeRoute(role))}
+            />
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-400">

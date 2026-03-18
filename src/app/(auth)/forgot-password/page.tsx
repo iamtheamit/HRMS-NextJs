@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
 
     try {
       await forgotPasswordMutation.mutateAsync(email);
-      setSuccessMessage('Check your inbox. If we found this email, we sent you a link to set a new password.');
+      setSuccessMessage('Check your inbox. We sent you a secure link to set a new password.');
     } catch (err: any) {
       setErrorMessage(err?.response?.data?.message ?? 'We could not process that email right now. Please try again.');
     }

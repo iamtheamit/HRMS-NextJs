@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
@@ -9,13 +9,31 @@ import { resendActivationEmailApi } from '@/features/auth/login/api/resendActiva
 import type { LoginResponse } from '@/features/auth/login/api/loginApi';
 import { routes } from '@/constants/routes';
 
-export function LoginForm({ onSuccess }: { onSuccess?: (role?: string) => void }) {
+type LoginFormProps = {
+  onSuccess?: (role?: string) => void;
+  activationState?: 'activated' | 'invalid' | null;
+};
+
+export function LoginForm({ onSuccess, activationState = null }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isResendingActivation, setIsResendingActivation] = useState(false);
   const loginMutation = useLogin();
+
+  useEffect(() => {
+    if (activationState === 'activated') {
+      setError(null);
+      setSuccessMessage('Your account has been activated. You can sign in now.');
+      return;
+    }
+
+    if (activationState === 'invalid') {
+      setSuccessMessage(null);
+      setError('This activation link is invalid or has already been replaced. Enter your email below to resend a fresh activation email.');
+    }
+  }, [activationState]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +69,7 @@ export function LoginForm({ onSuccess }: { onSuccess?: (role?: string) => void }
   };
 
   const isAccountInactiveError = error && error.toLowerCase().includes('not activated');
+  const showResendActivation = Boolean(isAccountInactiveError || activationState === 'invalid');
 
   return (
     <form onSubmit={submit} className="space-y-5">
@@ -90,7 +109,7 @@ export function LoginForm({ onSuccess }: { onSuccess?: (role?: string) => void }
       <Button type="submit" loading={loginMutation.isPending} className="w-full" size="lg">
         Sign in
       </Button>
-      {isAccountInactiveError && (
+      {showResendActivation && (
         <Button
           type="button"
           variant="secondary"
