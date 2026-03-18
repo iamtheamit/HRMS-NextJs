@@ -1,10 +1,16 @@
 import { apiClient } from '@/shared/api/apiClient';
 import type { Employee } from '../types/employee.types';
 
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
 export const employeeService = {
   async getById(id: string): Promise<Employee> {
-    const res = await apiClient.get<Employee>(`/employees/${id}`);
-    return res.data;
+    const res = await apiClient.get<ApiResponse<Employee>>(`/employees/${id}`);
+    return res.data.data;
   }
 };
 
