@@ -4,6 +4,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { AxiosError } from 'axios';
 import { useQuery } from '@tanstack/react-query';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Briefcase, Building2, CalendarDays, Mail, Phone, ShieldCheck, UserSquare2 } from 'lucide-react';
@@ -31,7 +32,7 @@ const statusVariant = (status?: string) => {
 export default function EmployeeDetailsPage({
   params
 }: EmployeeDetailsPageProps) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['employee', params.id],
     queryFn: () => employeeService.getById(params.id)
   });
@@ -44,7 +45,20 @@ export default function EmployeeDetailsPage({
     );
   }
 
-  if (isError || !data) {
+  if (isError) {
+    const statusCode = (error as AxiosError | null)?.response?.status;
+    if (statusCode === 404) {
+      notFound();
+    }
+
+    return (
+      <Card>
+        <p className="text-sm text-red-600">Unable to load employee details right now. Please try again.</p>
+      </Card>
+    );
+  }
+
+  if (!data) {
     notFound();
   }
 
