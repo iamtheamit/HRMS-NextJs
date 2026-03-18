@@ -6,15 +6,11 @@
 import Link from 'next/link';
 import type { AxiosError } from 'axios';
 import { useQuery } from '@tanstack/react-query';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { ArrowLeft, Briefcase, Building2, CalendarDays, Mail, Phone, ShieldCheck, UserSquare2 } from 'lucide-react';
 import { employeeService } from '@/entities/employee/services/employeeService';
 import { Card } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
-
-type EmployeeDetailsPageProps = {
-  params: { id: string };
-};
 
 const formatDate = (value?: string) => {
   if (!value) return 'Not available';
@@ -30,12 +26,23 @@ const statusVariant = (status?: string) => {
 };
 
 export default function EmployeeDetailsPage({
-  params
-}: EmployeeDetailsPageProps) {
+}: Record<string, never>) {
+  const params = useParams<{ id?: string | string[] }>();
+  const employeeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['employee', params.id],
-    queryFn: () => employeeService.getById(params.id)
+    queryKey: ['employee', employeeId],
+    queryFn: () => employeeService.getById(employeeId as string),
+    enabled: Boolean(employeeId),
   });
+
+  if (!employeeId) {
+    return (
+      <Card>
+        <p className="text-sm text-slate-500">Resolving employee profile...</p>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
