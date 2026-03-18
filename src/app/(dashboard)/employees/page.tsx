@@ -24,6 +24,7 @@ import { useUpdateEmployee } from '@/features/employee/update/model/useUpdateEmp
 import { AddEmployeeWizard } from '@/features/employee/create/ui/AddEmployeeWizard';
 import { useEmployeeLifecycle } from '@/features/employee/lifecycle/model/useEmployeeLifecycle';
 import { RoleGuard } from '@/shared/ui/RoleGuard';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 
 type Employee = {
   id: string;
@@ -101,6 +102,7 @@ export default function EmployeesPage() {
   const [department, setDepartment] = useState('All');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [blockTarget, setBlockTarget] = useState<{ id: string; name: string } | null>(null);
   const [form, setForm] = useState<EmployeeFormState>(defaultForm);
 
   const enrichedRows = useMemo(() => {
@@ -179,9 +181,18 @@ export default function EmployeesPage() {
 
   const blockEmployee = (employee: (typeof filteredRows)[number]) => {
     if (employee.status === 'INACTIVE' || employee.status === 'TERMINATED') return;
-    const shouldBlock = window.confirm(`Block ${employee.firstName} ${employee.lastName}? They will lose account access.`);
-    if (!shouldBlock) return;
-    lifecycleMutation.mutate({ id: employee.id, action: 'BLOCK' });
+    setBlockTarget({ id: employee.id, name: `${employee.firstName} ${employee.lastName}`.trim() });
+  };
+
+  const confirmBlockEmployee = () => {
+    if (!blockTarget) return;
+
+    lifecycleMutation.mutate(
+      { id: blockTarget.id, action: 'BLOCK' },
+      {
+        onSuccess: () => setBlockTarget(null),
+      },
+    );
   };
 
   const openEditModal = (employee: (typeof filteredRows)[number]) => {
@@ -444,6 +455,19 @@ export default function EmployeesPage() {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={Boolean(blockTarget)}
+          title="Block Employee"
+          description={blockTarget
+            ? `Block ${blockTarget.name} from accessing the platform? They can be reactivated later by admin action.`
+            : 'Block this employee from accessing the platform?'}
+          confirmLabel="Block"
+          tone="danger"
+          loading={lifecycleMutation.isPending}
+          onCancel={() => setBlockTarget(null)}
+          onConfirm={confirmBlockEmployee}
+        />
       </div>
     </RoleGuard>
   );

@@ -47,3 +47,18 @@ export const updateDepartmentApi = async (id: string, payload: UpdateDepartmentP
   const res = await apiClient.put<ApiResponse<Department>>(`/departments/${id}`, payload);
   return res.data.data;
 };
+
+export type AssignDepartmentEmployeesPayload = {
+  employeeIds: string[];
+};
+
+export const assignDepartmentEmployeesApi = async (
+  departmentId: string,
+  payload: AssignDepartmentEmployeesPayload,
+) => {
+  const res = await apiClient.patch<ApiResponse<Department>>(
+    `/departments/${departmentId}/assign-employees`,
+    payload,
+  );
+  return res.data.data;
+};

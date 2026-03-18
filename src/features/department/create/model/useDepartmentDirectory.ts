@@ -59,7 +59,6 @@ const mapApiDepartmentToRow = (department: ApiDepartment): Department => {
 export function useDepartmentDirectory() {
   const [departmentRows, setDepartmentRows] = useState<Department[]>([]);
   const [query, setQuery] = useState('');
-  const [selectedDept, setSelectedDept] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
 
@@ -109,18 +108,6 @@ export function useDepartmentDirectory() {
     [departmentRows]
   );
 
-  useEffect(() => {
-    if (!departmentRows.length) {
-      setSelectedDept('');
-      return;
-    }
-
-    const selectedStillExists = departmentRows.some((department) => department.name === selectedDept);
-    if (!selectedStillExists) {
-      setSelectedDept(departmentRows[0].name);
-    }
-  }, [departmentRows, selectedDept]);
-
   const openCreateModal = () => {
     setEditingDepartmentId(null);
     setIsFormOpen(true);
@@ -156,10 +143,6 @@ export function useDepartmentDirectory() {
             department.id === editingDepartmentId ? { ...department, ...mapped } : department
           )
         );
-
-        if (editingDepartment && selectedDept === editingDepartment.name) {
-          setSelectedDept(mapped.name);
-        }
       } catch (error) {
         console.error('Department update failed:', error);
       }
@@ -171,7 +154,6 @@ export function useDepartmentDirectory() {
         });
 
         setDepartmentRows((prev) => [mapApiDepartmentToRow(created), ...prev]);
-        setSelectedDept(payload.name);
       } catch (error) {
         console.error('Department create failed:', error);
       }
@@ -191,8 +173,6 @@ export function useDepartmentDirectory() {
     totalOpenRoles,
     query,
     setQuery,
-    selectedDept,
-    setSelectedDept,
     isFormOpen,
     editingDepartment,
     editingDepartmentId,
