@@ -32,7 +32,13 @@ type Employee = {
   email?: string;
   role?: string;
   joinedAt?: string;
+  hireDate?: string;
   status?: 'ACTIVE' | 'INACTIVE' | 'TERMINATED';
+  department?: {
+    id: string;
+    name: string;
+  } | null;
+  documents?: unknown;
 };
 
 type EmployeeFormState = {
@@ -62,7 +68,29 @@ const defaultForm: EmployeeFormState = {
   employeeCode: '',
 };
 
-const departments = ['All', 'Engineering', 'Human Resources', 'Finance', 'Operations'];
+const defaultDepartments = ['Engineering', 'Human Resources', 'Finance', 'Operations'];
+
+const formatRoleLabel = (value?: string) => {
+  if (!value) return 'Not Assigned';
+  return value
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const getDocumentCount = (documents: unknown) => {
+  if (!documents || typeof documents !== 'object' || Array.isArray(documents)) return 0;
+
+  return Object.values(documents as Record<string, unknown>).filter((entry) => {
+    if (!entry) return false;
+    if (typeof entry === 'string') return Boolean(entry.trim());
+    if (typeof entry === 'object') {
+      const url = (entry as Record<string, unknown>).url;
+      return typeof url === 'string' && Boolean(url.trim());
+    }
+    return false;
+  }).length;
+};
 
 export default function EmployeesPage() {
   const { data, isLoading, isError } = useEmployees();
@@ -78,17 +106,28 @@ export default function EmployeesPage() {
   const enrichedRows = useMemo(() => {
     const baseRows = (data ?? []) as Employee[];
     return baseRows.map((employee, index) => {
-      const dept = departments[(index % (departments.length - 1)) + 1];
-      const designation = employee.role || ['Software Engineer', 'HR Executive', 'Accountant', 'Ops Manager'][index % 4];
+      const dept = employee.department?.name || 'Unassigned';
+      const designation = formatRoleLabel(employee.role);
+      const documentCount = getDocumentCount(employee.documents);
+
       return {
         ...employee,
         department: dept,
         designation,
         employeeCode: `EMP-${String(index + 1001)}`,
-        joiningDate: employee.joinedAt || '2024-02-14',
+        joiningDate: employee.joinedAt || employee.hireDate || '-',
+        documentCount,
       };
     });
   }, [data]);
+
+  const departmentOptions = useMemo(() => {
+    const dynamicDepartments = Array.from(
+      new Set(enrichedRows.map((row) => row.department).filter(Boolean)),
+    );
+
+    return dynamicDepartments.length ? dynamicDepartments : defaultDepartments;
+  }, [enrichedRows]);
 
   const filteredRows = useMemo(() => {
     return enrichedRows.filter((employee) => {
@@ -100,10 +139,28 @@ export default function EmployeesPage() {
   }, [department, enrichedRows, search]);
 
   const departmentSummary = useMemo(() => {
-    return departments.slice(1).map((dep) => ({
+    return departmentOptions.map((dep) => ({
       department: dep,
       count: enrichedRows.filter((row) => row.department === dep).length,
     }));
+  }, [departmentOptions, enrichedRows]);
+
+  const departmentCount = useMemo(() => {
+    return departmentOptions.filter((dep) => dep !== 'Unassigned').length;
+  }, [departmentOptions]);
+
+  const documentsPendingCount = useMemo(() => {
+    return enrichedRows.filter((row) => row.documentCount === 0).length;
+  }, [enrichedRows]);
+
+  const activePositionsCount = useMemo(() => {
+    const activeDesignations = new Set(
+      enrichedRows
+        .filter((row) => row.status !== 'TERMINATED' && row.designation && row.designation !== 'Not Assigned')
+        .map((row) => row.designation),
+    );
+
+    return activeDesignations.size;
   }, [enrichedRows]);
 
   const isSaving = updateEmployee.isPending;
@@ -165,7 +222,7 @@ export default function EmployeesPage() {
           <Card>
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Departments</p>
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-slate-900">{departments.length - 1}</p>
+              <p className="text-3xl font-semibold text-slate-900">{departmentCount}</p>
               <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
                 <Building2 className="h-4 w-4" />
               </div>
@@ -174,7 +231,7 @@ export default function EmployeesPage() {
           <Card>
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Documents Pending</p>
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-slate-900">12</p>
+              <p className="text-3xl font-semibold text-slate-900">{documentsPendingCount}</p>
               <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
                 <FileUp className="h-4 w-4" />
               </div>
@@ -183,7 +240,7 @@ export default function EmployeesPage() {
           <Card>
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Active Positions</p>
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-3xl font-semibold text-slate-900">9</p>
+              <p className="text-3xl font-semibold text-slate-900">{activePositionsCount}</p>
               <div className="rounded-lg bg-indigo-50 p-2 text-indigo-700">
                 <Briefcase className="h-4 w-4" />
               </div>
@@ -270,7 +327,11 @@ export default function EmployeesPage() {
                         <Badge variant={statusBadgeVariant(employee.status)}>{statusLabel(employee.status)}</Badge>
                       </td>
                       <td className="px-4 py-3.5">
-                        <Badge variant="warning">3 Pending</Badge>
+                        {employee.documentCount > 0 ? (
+                          <Badge variant="success">{employee.documentCount} Uploaded</Badge>
+                        ) : (
+                          <Badge variant="warning">Pending</Badge>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">
@@ -353,7 +414,7 @@ export default function EmployeesPage() {
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-slate-700">Department</label>
                   <select value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} className="block h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100">
-                    {departments.slice(1).map((d) => <option key={d} value={d}>{d}</option>)}
+                    {departmentOptions.filter((d) => d !== 'Unassigned').map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
