@@ -26,6 +26,8 @@ export type AttendanceItem = {
   employee?: AttendanceEmployee;
 };
 
+export type AdminAttendanceStatus = AttendanceItem['status'];
+
 export type AttendancePunchResponse = {
   action: 'CHECK_IN' | 'CHECK_OUT';
   record: AttendanceItem;
@@ -40,5 +42,19 @@ export const listAttendanceApi = async (employeeId?: string) => {
 
 export const punchAttendanceApi = async () => {
   const res = await apiClient.post<ApiResponse<AttendancePunchResponse>>('/attendance/punch');
+  return res.data.data;
+};
+
+export const updateAttendanceStatusApi = async (id: string, status: AdminAttendanceStatus) => {
+  const res = await apiClient.patch<ApiResponse<AttendanceItem>>(`/attendance/${id}/status`, { status });
+  return res.data.data;
+};
+
+export const markAttendanceApi = async (payload: {
+  employeeId: string;
+  date: string;
+  status: AdminAttendanceStatus;
+}) => {
+  const res = await apiClient.post<ApiResponse<AttendanceItem>>('/attendance/mark', payload);
   return res.data.data;
 };

@@ -1,168 +1,93 @@
+import { apiClient } from '@/shared/api/apiClient';
 import type { SalaryListResponse, SalaryQuery, SalaryTemplate } from '@/entities/salary/types/salary.types';
 
-const MOCK_DELAY_MS = 120;
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
 
-export const salaryTemplates: SalaryTemplate[] = [
-  {
-    id: 'sal-2026-03-1001',
-    employeeId: 'emp-1001',
-    employeeCode: 'EMP-1001',
-    employeeName: 'Priya Sharma',
-    department: 'Engineering',
-    designation: 'Frontend Engineer',
-    month: 'March',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 25,
-    status: 'Processed',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 6 },
-    components: { basic: 42000, hra: 16800, allowances: 7000, bonus: 2000, otherEarnings: 1200, otherDeductions: 800 }
-  },
-  {
-    id: 'sal-2026-03-1002',
-    employeeId: 'emp-1002',
-    employeeCode: 'EMP-1002',
-    employeeName: 'Rahul Mehta',
-    department: 'Engineering',
-    designation: 'Backend Engineer',
-    month: 'March',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 24,
-    status: 'Draft',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 5.5 },
-    components: { basic: 45000, hra: 18000, allowances: 7600, bonus: 1800, otherEarnings: 1000, otherDeductions: 1000 }
-  },
-  {
-    id: 'sal-2026-03-1003',
-    employeeId: 'emp-1003',
-    employeeCode: 'EMP-1003',
-    employeeName: 'Ananya Joshi',
-    department: 'Human Resources',
-    designation: 'HR Business Partner',
-    month: 'March',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 26,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 4.8 },
-    components: { basic: 36000, hra: 14400, allowances: 6200, bonus: 1200, otherEarnings: 800, otherDeductions: 700 }
-  },
-  {
-    id: 'sal-2026-03-1004',
-    employeeId: 'emp-1004',
-    employeeCode: 'EMP-1004',
-    employeeName: 'Sneha Patel',
-    department: 'Finance',
-    designation: 'Accounts Executive',
-    month: 'March',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 23,
-    status: 'Processed',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 4.2 },
-    components: { basic: 33000, hra: 13200, allowances: 5400, bonus: 1000, otherEarnings: 900, otherDeductions: 600 }
-  },
-  {
-    id: 'sal-2026-02-1001',
-    employeeId: 'emp-1001',
-    employeeCode: 'EMP-1001',
-    employeeName: 'Priya Sharma',
-    department: 'Engineering',
-    designation: 'Frontend Engineer',
-    month: 'February',
-    year: 2026,
-    workingDays: 24,
-    payableDays: 23,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 6 },
-    components: { basic: 42000, hra: 16800, allowances: 6800, bonus: 1200, otherEarnings: 900, otherDeductions: 900 }
-  },
-  {
-    id: 'sal-2026-02-1002',
-    employeeId: 'emp-1002',
-    employeeCode: 'EMP-1002',
-    employeeName: 'Rahul Mehta',
-    department: 'Engineering',
-    designation: 'Backend Engineer',
-    month: 'February',
-    year: 2026,
-    workingDays: 24,
-    payableDays: 24,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 5.5 },
-    components: { basic: 45000, hra: 18000, allowances: 7500, bonus: 1500, otherEarnings: 1000, otherDeductions: 950 }
-  },
-  {
-    id: 'sal-2026-02-1003',
-    employeeId: 'emp-1003',
-    employeeCode: 'EMP-1003',
-    employeeName: 'Ananya Joshi',
-    department: 'Human Resources',
-    designation: 'HR Business Partner',
-    month: 'February',
-    year: 2026,
-    workingDays: 24,
-    payableDays: 24,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 4.8 },
-    components: { basic: 36000, hra: 14400, allowances: 6000, bonus: 900, otherEarnings: 700, otherDeductions: 650 }
-  },
-  {
-    id: 'sal-2026-01-1001',
-    employeeId: 'emp-1001',
-    employeeCode: 'EMP-1001',
-    employeeName: 'Priya Sharma',
-    department: 'Engineering',
-    designation: 'Frontend Engineer',
-    month: 'January',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 24,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 6 },
-    components: { basic: 42000, hra: 16800, allowances: 6500, bonus: 1000, otherEarnings: 600, otherDeductions: 700 }
-  },
-  {
-    id: 'sal-2026-01-1004',
-    employeeId: 'emp-1004',
-    employeeCode: 'EMP-1004',
-    employeeName: 'Sneha Patel',
-    department: 'Finance',
-    designation: 'Accounts Executive',
-    month: 'January',
-    year: 2026,
-    workingDays: 26,
-    payableDays: 25,
-    status: 'Paid',
-    rates: { pfEmployeeRate: 12, pfEmployerRate: 12, esiRate: 0.75, tdsRate: 4.2 },
-    components: { basic: 33000, hra: 13200, allowances: 5200, bonus: 900, otherEarnings: 700, otherDeductions: 550 }
-  }
-];
+type BackendSalaryRecord = {
+  id: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  department: string;
+  designation: string;
+  month: string;
+  year: number;
+  workingDays: number;
+  payableDays: number;
+  status: 'Draft' | 'Processed' | 'Paid';
+  rates: SalaryTemplate['rates'];
+  components: SalaryTemplate['components'];
+};
 
-function wait(delay = MOCK_DELAY_MS) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delay);
-  });
-}
+const toSalaryTemplate = (row: BackendSalaryRecord): SalaryTemplate => {
+  return {
+    id: row.id,
+    employeeId: row.employeeId,
+    employeeCode: row.employeeCode,
+    employeeName: row.employeeName,
+    department: row.department,
+    designation: row.designation,
+    month: row.month,
+    year: row.year,
+    workingDays: row.workingDays,
+    payableDays: row.payableDays,
+    status: row.status,
+    rates: row.rates,
+    components: row.components,
+  };
+};
 
 export async function fetchSalaryTemplates(query: SalaryQuery = {}): Promise<SalaryListResponse> {
-  await wait();
-
-  const filtered = salaryTemplates.filter((entry) => {
-    const matchesMonth = query.month ? entry.month === query.month : true;
-    const matchesYear = query.year ? entry.year === query.year : true;
-    const matchesEmployee = query.employeeId ? entry.employeeId === query.employeeId : true;
-
-    return matchesMonth && matchesYear && matchesEmployee;
+  const res = await apiClient.get<ApiResponse<BackendSalaryRecord[]>>('/salary', {
+    params: query,
   });
 
+  const data = (res.data.data || []).map(toSalaryTemplate);
   return {
-    data: filtered,
-    total: filtered.length
+    data,
+    total: data.length,
   };
 }
 
+export async function updateSalaryTemplate(
+  id: string,
+  patch: Partial<{
+    status: SalaryTemplate['status'];
+    payableDays: number;
+    rates: Partial<SalaryTemplate['rates']>;
+    components: Partial<SalaryTemplate['components']>;
+  }>,
+): Promise<SalaryTemplate> {
+  const payload: Record<string, unknown> = {};
+
+  if (patch.status) payload.status = patch.status;
+  if (typeof patch.payableDays === 'number') payload.payableDays = patch.payableDays;
+
+  if (patch.rates) {
+    if (typeof patch.rates.pfEmployeeRate === 'number') payload.pfEmployeeRate = patch.rates.pfEmployeeRate;
+    if (typeof patch.rates.pfEmployerRate === 'number') payload.pfEmployerRate = patch.rates.pfEmployerRate;
+    if (typeof patch.rates.esiRate === 'number') payload.esiRate = patch.rates.esiRate;
+    if (typeof patch.rates.tdsRate === 'number') payload.tdsRate = patch.rates.tdsRate;
+  }
+
+  if (patch.components) {
+    if (typeof patch.components.basic === 'number') payload.basic = patch.components.basic;
+    if (typeof patch.components.hra === 'number') payload.hra = patch.components.hra;
+    if (typeof patch.components.allowances === 'number') payload.allowances = patch.components.allowances;
+    if (typeof patch.components.bonus === 'number') payload.bonus = patch.components.bonus;
+    if (typeof patch.components.otherEarnings === 'number') payload.otherEarnings = patch.components.otherEarnings;
+    if (typeof patch.components.otherDeductions === 'number') payload.otherDeductions = patch.components.otherDeductions;
+  }
+
+  const res = await apiClient.patch<ApiResponse<BackendSalaryRecord>>(`/salary/${id}`, payload);
+  return toSalaryTemplate(res.data.data);
+}
+
 export default {
-  fetchSalaryTemplates
+  fetchSalaryTemplates,
+  updateSalaryTemplate,
 };

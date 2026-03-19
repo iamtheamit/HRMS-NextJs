@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePayroll } from '@/entities/payroll/model/usePayroll';
+import { payrollService } from '@/entities/payroll/services/payrollService';
 import type { PayrollRecord, PayrollStatus } from '@/entities/payroll/types/payroll.types';
 
 const months = ['January', 'February', 'March'] as const;
@@ -11,17 +13,37 @@ export function usePayrollManagement() {
   const [month, setMonth] = useState<(typeof months)[number]>('March');
   const [year, setYear] = useState(2026);
   const [status, setStatus] = useState<'All' | PayrollStatus>('All');
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, PayrollStatus>>({});
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = usePayroll({ month, year });
 
+  const processMutation = useMutation({
+    mutationFn: (payrollId: string) => payrollService.process(payrollId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+    },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: (payrollId: string) => payrollService.markPaid(payrollId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+    },
+  });
+
+  const processAllMutation = useMutation({
+    mutationFn: () => payrollService.processAllDrafts({ month, year }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['payroll'] });
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+    },
+  });
+
   const rows = useMemo<PayrollRecord[]>(() => {
-    const list = data?.data ?? [];
-    return list.map((row) => ({
-      ...row,
-      status: statusOverrides[row.payrollId] ?? row.status
-    }));
-  }, [data, statusOverrides]);
+    return data?.data ?? [];
+  }, [data]);
 
   const visibleRows = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -47,32 +69,16 @@ export function usePayrollManagement() {
     };
   }, [visibleRows]);
 
-  const processPayroll = (payrollId: string) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [payrollId]: 'Processed'
-    }));
+  const processPayroll = async (payrollId: string) => {
+    await processMutation.mutateAsync(payrollId);
   };
 
-  const markPayrollPaid = (payrollId: string) => {
-    setStatusOverrides((prev) => ({
-      ...prev,
-      [payrollId]: 'Paid'
-    }));
+  const markPayrollPaid = async (payrollId: string) => {
+    await markPaidMutation.mutateAsync(payrollId);
   };
 
-  const processAllDrafts = () => {
-    const nextOverrides = visibleRows.reduce<Record<string, PayrollStatus>>((acc, row) => {
-      if (row.status === 'Draft') {
-        acc[row.payrollId] = 'Processed';
-      }
-      return acc;
-    }, {});
-
-    setStatusOverrides((prev) => ({
-      ...prev,
-      ...nextOverrides
-    }));
+  const processAllDrafts = async () => {
+    await processAllMutation.mutateAsync();
   };
 
   return {

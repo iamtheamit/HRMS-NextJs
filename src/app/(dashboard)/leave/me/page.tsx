@@ -135,8 +135,8 @@ export default function LeaveSelfPage() {
     ];
   }, [requests]);
 
-  const submitSelfRequest = (form: LeaveRequestForm) => {
-    createLeaveMutation.mutate({
+  const submitSelfRequest = async (form: LeaveRequestForm) => {
+    await createLeaveMutation.mutateAsync({
       startDate: form.from,
       endDate: form.to,
       type: form.type,
@@ -266,6 +266,7 @@ export default function LeaveSelfPage() {
           open={isApplicationOpen}
           employees={selfEmployee ? [{ id: selfEmployee.id, name: selfEmployee.name, department: selfEmployee.department }] : []}
           holidays={[]}
+          isSubmitting={createLeaveMutation.isPending}
           onClose={() => setIsApplicationOpen(false)}
           onSubmit={submitSelfRequest}
         />

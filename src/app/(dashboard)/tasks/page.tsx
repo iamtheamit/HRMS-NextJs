@@ -1,6 +1,5 @@
 'use client';
 
-import clsx from 'clsx';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
@@ -24,17 +23,19 @@ export default function TasksPage() {
     setStatusFilter,
     priorityFilter,
     setPriorityFilter,
-    viewerRole,
-    setViewerRole,
-    activeEmployeeId,
-    setActiveEmployeeId,
     employees,
     isAssignmentOpen,
     openAssignment,
     closeAssignment,
     assignTask,
-    updateTaskStatus
-  } = useTaskManagement();
+    updateTaskStatus,
+    canAssignTasks,
+    canUpdateTask,
+    assignerRole,
+    isLoading,
+    isAssigning,
+    isUpdating,
+  } = useTaskManagement({ mode: 'admin' });
 
   const statCards = [
     { label: 'To Do', value: stats.todo, icon: ClipboardList, bg: 'bg-slate-100', color: 'text-slate-700' },
@@ -49,7 +50,7 @@ export default function TasksPage() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Task Assignment</h2>
-          <p className="text-sm text-slate-500">Assign tasks from Manager/HR and let employees update progress in one shared workflow.</p>
+          <p className="text-sm text-slate-500">Assign tasks within your role scope and track live progress from the backend.</p>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -60,33 +61,7 @@ export default function TasksPage() {
             onChange={(event) => setQuery(event.target.value)}
           />
 
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1">
-            {(['Manager', 'HR', 'Employee'] as const).map((role) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setViewerRole(role)}
-                className={clsx(
-                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition',
-                  viewerRole === role ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-                )}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
-
-          {viewerRole === 'Employee' && (
-            <select
-              value={activeEmployeeId}
-              onChange={(event) => setActiveEmployeeId(event.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-            >
-              {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
-            </select>
-          )}
-
-          {viewerRole !== 'Employee' && (
+          {canAssignTasks && (
             <Button onClick={openAssignment}>
               <Plus className="h-4 w-4" />
               Assign Task
@@ -125,10 +100,10 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setStatusFilter('All')}
-                className={clsx(
+                className={[
                   'rounded-lg px-2.5 py-1 text-xs font-semibold transition',
                   statusFilter === 'All' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
-                )}
+                ].join(' ')}
               >
                 All
               </button>
@@ -137,10 +112,10 @@ export default function TasksPage() {
                   key={status}
                   type="button"
                   onClick={() => setStatusFilter(status)}
-                  className={clsx(
+                  className={[
                     'rounded-lg px-2.5 py-1 text-xs font-semibold transition',
                     statusFilter === status ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
-                  )}
+                  ].join(' ')}
                 >
                   {status}
                 </button>
@@ -171,8 +146,13 @@ export default function TasksPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {!isLoading && tasks.length === 0 && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={7}>No tasks found for the current scope.</td>
+                </tr>
+              )}
               {tasks.map((task) => {
-                const canUpdate = viewerRole !== 'Employee' || task.assignedToId === activeEmployeeId;
+                const canUpdate = canUpdateTask(task);
 
                 return (
                   <tr key={task.id} className="hover:bg-slate-50/70">
@@ -207,15 +187,15 @@ export default function TasksPage() {
                           <button
                             key={status}
                             type="button"
-                            disabled={!canUpdate}
-                            onClick={() => updateTaskStatus(task.id, status)}
-                            className={clsx(
+                            disabled={!canUpdate || isUpdating}
+                            onClick={() => void updateTaskStatus(task.id, status)}
+                            className={[
                               'rounded-full px-2.5 py-1 text-xs font-semibold transition ring-1',
                               task.status === status
                                 ? 'bg-brand-50 text-brand-700 ring-brand-200'
                                 : 'bg-white text-slate-500 ring-slate-200 hover:bg-slate-50',
                               !canUpdate && 'cursor-not-allowed opacity-40'
-                            )}
+                            ].filter(Boolean).join(' ')}
                           >
                             {status}
                           </button>
@@ -233,8 +213,12 @@ export default function TasksPage() {
       <TaskAssignmentWizard
         open={isAssignmentOpen}
         employees={employees}
+        assignedByRole={assignerRole}
+        isSubmitting={isAssigning}
         onClose={closeAssignment}
-        onSubmit={assignTask}
+        onSubmit={async (form) => {
+          await assignTask(form);
+        }}
       />
       </div>
     </RoleGuard>

@@ -1,11 +1,22 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/authStore';
+import { useEmployees } from '@/entities/employee/model/useEmployees';
+import {
+  createTask,
+  fetchTasks,
+  updateTaskStatus as updateTaskStatusRequest,
+  type CreateTaskPayload,
+  type TaskApiItem,
+  type TaskPriorityApi,
+  type TaskStatusApi,
+} from '../api/taskApi';
 
 export type TaskStatus = 'To Do' | 'In Progress' | 'Completed';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TaskAssignerRole = 'Manager' | 'HR';
-export type ViewerRole = 'Manager' | 'HR' | 'Employee';
 
 export type TaskItem = {
   id: string;
@@ -27,7 +38,6 @@ export type TaskForm = {
   assignedToId: string;
   dueDate: string;
   priority: TaskPriority;
-  assignedByRole: TaskAssignerRole;
 };
 
 type Employee = {
@@ -36,79 +46,143 @@ type Employee = {
   department: string;
 };
 
-const employees: Employee[] = [
-  { id: 'emp-1001', name: 'Priya Sharma', department: 'Engineering' },
-  { id: 'emp-1002', name: 'Rahul Mehta', department: 'Engineering' },
-  { id: 'emp-1003', name: 'Ananya Joshi', department: 'Human Resources' },
-  { id: 'emp-1004', name: 'Sneha Patel', department: 'Finance' },
-  { id: 'emp-1005', name: 'Vikram Singh', department: 'Operations' }
-];
-
-const initialTasks: TaskItem[] = [
-  {
-    id: 'task-001',
-    title: 'Finalize onboarding checklist',
-    description: 'Prepare and publish the updated employee onboarding checklist for Q2 hires.',
-    assignedToId: 'emp-1003',
-    assignedToName: 'Ananya Joshi',
-    assignedToDepartment: 'Human Resources',
-    assignedByRole: 'HR',
-    dueDate: '2026-03-20',
-    priority: 'High',
-    status: 'In Progress',
-    createdAt: '2026-03-15 09:10'
-  },
-  {
-    id: 'task-002',
-    title: 'Resolve payroll discrepancy tickets',
-    description: 'Investigate and close pending payroll discrepancy tickets from finance queue.',
-    assignedToId: 'emp-1004',
-    assignedToName: 'Sneha Patel',
-    assignedToDepartment: 'Finance',
-    assignedByRole: 'Manager',
-    dueDate: '2026-03-18',
-    priority: 'Critical',
-    status: 'To Do',
-    createdAt: '2026-03-15 10:35'
-  },
-  {
-    id: 'task-003',
-    title: 'Submit sprint attendance analytics',
-    description: 'Create attendance vs productivity summary for current sprint and share with management.',
-    assignedToId: 'emp-1001',
-    assignedToName: 'Priya Sharma',
-    assignedToDepartment: 'Engineering',
-    assignedByRole: 'Manager',
-    dueDate: '2026-03-22',
-    priority: 'Medium',
-    status: 'Completed',
-    createdAt: '2026-03-14 16:20'
-  }
-];
-
 const defaultTaskForm: TaskForm = {
   title: '',
   description: '',
   assignedToId: '',
   dueDate: '',
   priority: 'Medium',
-  assignedByRole: 'Manager'
 };
 
-export function useTaskManagement() {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [viewerRole, setViewerRole] = useState<ViewerRole>('Manager');
-  const [activeEmployeeId, setActiveEmployeeId] = useState<string>(employees[0].id);
+const taskStatusMap: Record<TaskStatusApi, TaskStatus> = {
+  TODO: 'To Do',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+};
+
+const taskPriorityMap: Record<TaskPriorityApi, TaskPriority> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
+};
+
+const taskAssignerRoleMap: Record<'MANAGER' | 'HR', TaskAssignerRole> = {
+  MANAGER: 'Manager',
+  HR: 'HR',
+};
+
+const taskStatusApiMap: Record<TaskStatus, TaskStatusApi> = {
+  'To Do': 'TODO',
+  'In Progress': 'IN_PROGRESS',
+  Completed: 'COMPLETED',
+};
+
+const taskPriorityApiMap: Record<TaskPriority, TaskPriorityApi> = {
+  Low: 'LOW',
+  Medium: 'MEDIUM',
+  High: 'HIGH',
+  Critical: 'CRITICAL',
+};
+
+const formatDate = (value: string) => value.slice(0, 10);
+
+const formatDateTime = (value: string) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+};
+
+const mapTask = (task: TaskApiItem): TaskItem => ({
+  id: task.id,
+  title: task.title,
+  description: task.description,
+  assignedToId: task.assignedToId,
+  assignedToName: `${task.assignedTo.firstName} ${task.assignedTo.lastName}`.trim(),
+  assignedToDepartment: task.assignedTo.department?.name || 'Unassigned',
+  assignedByRole: taskAssignerRoleMap[task.assignedByRole],
+  dueDate: formatDate(task.dueDate),
+  priority: taskPriorityMap[task.priority],
+  status: taskStatusMap[task.status],
+  createdAt: formatDateTime(task.createdAt),
+});
+
+type UseTaskManagementOptions = {
+  mode: 'admin' | 'self';
+};
+
+export function useTaskManagement({ mode }: UseTaskManagementOptions) {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | TaskStatus>('All');
   const [priorityFilter, setPriorityFilter] = useState<'All' | TaskPriority>('All');
   const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
 
+  const { data: employeeData = [], isLoading: isEmployeesLoading } = useEmployees(1, 200);
+
+  const employees = useMemo<Employee[]>(() => {
+    const scopedEmployees = employeeData.filter((employee) => {
+      if (!user?.role) {
+        return false;
+      }
+
+      if (user.role === 'SUPER_ADMIN' || user.role === 'HR_ADMIN') {
+        return true;
+      }
+
+      if (user.role === 'MANAGER') {
+        return employee.id === user.employeeId || employee.managerId === user.employeeId;
+      }
+
+      return employee.id === user.employeeId;
+    });
+
+    return scopedEmployees.map((employee) => ({
+      id: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`.trim(),
+      department: employee.department?.name || 'No Department',
+    }));
+  }, [employeeData, user?.employeeId, user?.role]);
+
+  const taskQueryParams = useMemo(() => {
+    const params: {
+      assignedToId?: string;
+      status?: TaskStatusApi;
+      priority?: TaskPriorityApi;
+    } = {};
+
+    if (mode === 'self' && user?.employeeId) {
+      params.assignedToId = user.employeeId;
+    }
+
+    if (statusFilter !== 'All') {
+      params.status = taskStatusApiMap[statusFilter];
+    }
+
+    if (priorityFilter !== 'All') {
+      params.priority = taskPriorityApiMap[priorityFilter];
+    }
+
+    return params;
+  }, [mode, priorityFilter, statusFilter, user?.employeeId]);
+
+  const { data: taskData = [], isLoading: isTasksLoading } = useQuery({
+    queryKey: ['tasks', mode, user?.role, user?.employeeId, taskQueryParams],
+    queryFn: () => fetchTasks(taskQueryParams),
+    enabled: Boolean(user?.role),
+  });
+
+  const tasks = useMemo(() => taskData.map(mapTask), [taskData]);
+
   const visibleTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return tasks.filter((task) => {
-      const roleScoped = viewerRole === 'Employee' ? task.assignedToId === activeEmployeeId : true;
       const matchesStatus = statusFilter === 'All' || task.status === statusFilter;
       const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
       const matchesQuery =
@@ -117,9 +191,9 @@ export function useTaskManagement() {
         task.assignedToName.toLowerCase().includes(normalizedQuery) ||
         task.assignedToDepartment.toLowerCase().includes(normalizedQuery);
 
-      return roleScoped && matchesStatus && matchesPriority && matchesQuery;
+      return matchesStatus && matchesPriority && matchesQuery;
     });
-  }, [activeEmployeeId, priorityFilter, query, statusFilter, tasks, viewerRole]);
+  }, [priorityFilter, query, statusFilter, tasks]);
 
   const stats = useMemo(() => {
     return {
@@ -133,40 +207,42 @@ export function useTaskManagement() {
   const openAssignment = () => setIsAssignmentOpen(true);
   const closeAssignment = () => setIsAssignmentOpen(false);
 
-  const assignTask = (form: TaskForm) => {
-    const employee = employees.find((entry) => entry.id === form.assignedToId);
-    if (!employee) return;
+  const createTaskMutation = useMutation({
+    mutationFn: (form: TaskForm) => {
+      const payload: CreateTaskPayload = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        assignedToId: form.assignedToId,
+        dueDate: form.dueDate,
+        priority: taskPriorityApiMap[form.priority],
+      };
 
-    const payload: TaskItem = {
-      id: `task-${Date.now()}`,
-      title: form.title.trim(),
-      description: form.description.trim(),
-      assignedToId: employee.id,
-      assignedToName: employee.name,
-      assignedToDepartment: employee.department,
-      assignedByRole: form.assignedByRole,
-      dueDate: form.dueDate,
-      priority: form.priority,
-      status: 'To Do',
-      createdAt: new Date().toLocaleString()
-    };
+      return createTask(payload);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      closeAssignment();
+    },
+  });
 
-    setTasks((prev) => [payload, ...prev]);
-    closeAssignment();
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: ({ taskId, nextStatus }: { taskId: string; nextStatus: TaskStatus }) => {
+      return updateTaskStatusRequest(taskId, taskStatusApiMap[nextStatus]);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  const assignTask = async (form: TaskForm) => createTaskMutation.mutateAsync(form);
+
+  const updateTaskStatus = async (taskId: string, nextStatus: TaskStatus) => {
+    await updateTaskStatusMutation.mutateAsync({ taskId, nextStatus });
   };
 
-  const updateTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== taskId) return task;
-
-        // Employees can only update their own tasks. Manager/HR can update all tasks.
-        if (viewerRole === 'Employee' && task.assignedToId !== activeEmployeeId) return task;
-
-        return { ...task, status: nextStatus };
-      })
-    );
-  };
+  const canAssignTasks = user?.role === 'SUPER_ADMIN' || user?.role === 'HR_ADMIN' || user?.role === 'MANAGER';
+  const canUpdateTask = (task: TaskItem) => task.assignedToId === user?.employeeId;
+  const assignerRole: TaskAssignerRole = user?.role === 'MANAGER' ? 'Manager' : 'HR';
 
   return {
     tasks: visibleTasks,
@@ -178,17 +254,19 @@ export function useTaskManagement() {
     setStatusFilter,
     priorityFilter,
     setPriorityFilter,
-    viewerRole,
-    setViewerRole,
-    activeEmployeeId,
-    setActiveEmployeeId,
     employees,
     defaultTaskForm,
     isAssignmentOpen,
     openAssignment,
     closeAssignment,
     assignTask,
-    updateTaskStatus
+    updateTaskStatus,
+    canAssignTasks,
+    canUpdateTask,
+    assignerRole,
+    isLoading: isTasksLoading || (mode === 'admin' && isEmployeesLoading),
+    isAssigning: createTaskMutation.isPending,
+    isUpdating: updateTaskStatusMutation.isPending,
   };
 }
 

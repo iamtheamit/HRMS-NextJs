@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { CalendarDays, CheckCircle2, ClipboardList, Timer, TrendingUp } from 'lucide-react';
 import { Card } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { useTaskManagement, type TaskPriority, type TaskStatus } from '@/features/task/model/useTaskManagement';
-import { useAuthStore } from '@/store/authStore';
 import { RoleGuard } from '@/shared/ui/RoleGuard';
 
 const statusVariant: Record<TaskStatus, 'default' | 'warning' | 'success'> = {
@@ -22,34 +21,13 @@ const priorityVariant: Record<TaskPriority, 'soft' | 'warning' | 'danger'> = {
 };
 
 export default function TasksSelfPage() {
-  const user = useAuthStore((state) => state.user);
   const {
     tasks,
     stats,
-    setViewerRole,
-    employees,
-    setActiveEmployeeId,
     updateTaskStatus,
-  } = useTaskManagement();
-
-  useEffect(() => {
-    setViewerRole('Employee');
-  }, [setViewerRole]);
-
-  useEffect(() => {
-    if (user?.employeeId) {
-      const byId = employees.find((employee) => employee.id === user.employeeId);
-      if (byId) {
-        setActiveEmployeeId(byId.id);
-        return;
-      }
-    }
-
-    if (employees[0]) {
-      setActiveEmployeeId(employees[0].id);
-      return;
-    }
-  }, [employees, setActiveEmployeeId, user?.employeeId]);
+    isLoading,
+    isUpdating,
+  } = useTaskManagement({ mode: 'self' });
 
   const completionRate = useMemo(() => {
     if (!tasks.length) return 0;
@@ -120,7 +98,7 @@ export default function TasksSelfPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tasks.length === 0 && (
+                {!isLoading && tasks.length === 0 && (
                   <tr>
                     <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={5}>No tasks assigned currently.</td>
                   </tr>
@@ -149,7 +127,8 @@ export default function TasksSelfPage() {
                           <button
                             key={status}
                             type="button"
-                            onClick={() => updateTaskStatus(task.id, status)}
+                            disabled={isUpdating}
+                            onClick={() => void updateTaskStatus(task.id, status)}
                             className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition ${task.status === status ? 'bg-brand-50 text-brand-700 ring-brand-200' : 'bg-white text-slate-500 ring-slate-200 hover:bg-slate-50'}`}
                           >
                             {status}

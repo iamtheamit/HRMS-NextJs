@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSalary } from '@/entities/salary/model/useSalary';
+import { salaryService } from '@/entities/salary/services/salaryService';
 import type { SalaryComputed, SalaryStatus } from '@/entities/salary/types/salary.types';
 import { applySalaryOverride, type SalaryOverride } from '@/features/payroll/model/payrollCalculations';
 
@@ -18,14 +20,24 @@ export function useSalaryManagement() {
   const [year, setYear] = useState(2026);
   const [department, setDepartment] = useState('All Departments');
   const [status, setStatus] = useState<'All' | SalaryStatus>('All');
-  const [overrides, setOverrides] = useState<Record<string, SalaryOverride>>({});
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useSalary({ month, year });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: SalaryOverride }) => {
+      return salaryService.update(id, patch);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['salary'] });
+      await queryClient.invalidateQueries({ queryKey: ['payroll'] });
+    },
+  });
+
   const allRows = useMemo<SalaryComputed[]>(() => {
     const rows = data?.data ?? [];
-    return rows.map((row) => applySalaryOverride(row, overrides[row.id]));
-  }, [data, overrides]);
+    return rows.map((row) => applySalaryOverride(row));
+  }, [data]);
 
   const departments = useMemo(() => {
     return ['All Departments', ...Array.from(new Set(allRows.map((row) => row.department)))];
@@ -62,14 +74,7 @@ export function useSalaryManagement() {
   }, [visibleRows]);
 
   const updateSalary = (id: string, patch: SalaryOverride) => {
-    setOverrides((prev) => ({
-      ...prev,
-      [id]: {
-        rates: { ...prev[id]?.rates, ...patch.rates },
-        components: { ...prev[id]?.components, ...patch.components },
-        status: patch.status ?? prev[id]?.status
-      }
-    }));
+    updateMutation.mutate({ id, patch });
   };
 
   const exportSalaryCsv = () => {

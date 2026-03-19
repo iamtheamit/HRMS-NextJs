@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/features/auth/login/components/LoginForm';
 import { AuthWelcomePanel } from '@/features/auth/login/components/AuthWelcomePanel';
 import { getRoleHomeRoute } from '@/features/auth/login/model/getRoleHomeRoute';
 import { useAuthStore } from '@/store/authStore';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -52,5 +52,19 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-white px-4">
+          <p className="text-sm text-slate-600">Loading sign in...</p>
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

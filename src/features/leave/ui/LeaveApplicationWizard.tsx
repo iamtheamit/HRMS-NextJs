@@ -27,8 +27,9 @@ type Props = {
   open: boolean;
   employees: EmployeeOption[];
   holidays: Holiday[];
+  isSubmitting?: boolean;
   onClose: () => void;
-  onSubmit: (form: LeaveRequestForm) => void;
+  onSubmit: (form: LeaveRequestForm) => Promise<void> | void;
 };
 
 const leaveTypes: { type: LeaveType; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -57,7 +58,14 @@ const defaultForm: LeaveRequestForm = {
   reason: ''
 };
 
-export function LeaveApplicationWizard({ open, employees, holidays, onClose, onSubmit }: Props) {
+export function LeaveApplicationWizard({
+  open,
+  employees,
+  holidays,
+  isSubmitting = false,
+  onClose,
+  onSubmit,
+}: Props) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<LeaveRequestForm>(defaultForm);
   const [touched, setTouched] = useState(false);
@@ -106,8 +114,8 @@ export function LeaveApplicationWizard({ open, employees, holidays, onClose, onS
     goToStep(step + 1);
   };
 
-  const handleSubmit = () => {
-    onSubmit(form);
+  const handleSubmit = async () => {
+    await onSubmit(form);
     setSubmitted(true);
     window.setTimeout(() => onClose(), 1200);
   };
@@ -306,7 +314,9 @@ export function LeaveApplicationWizard({ open, employees, holidays, onClose, onS
             {step < STEPS.length ? (
               <Button type="button" onClick={handleNext}>Next →</Button>
             ) : (
-              <Button type="button" onClick={handleSubmit} disabled={submitted}>Submit Request</Button>
+              <Button type="button" onClick={handleSubmit} disabled={submitted || isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              </Button>
             )}
           </div>
         </div>

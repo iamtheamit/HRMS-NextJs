@@ -1,64 +1,44 @@
-import { salaryTemplates } from '@/entities/salary/api/salaryApi';
+import { apiClient } from '@/shared/api/apiClient';
 import type { PayrollListResponse, PayrollQuery, PayrollRecord } from '@/entities/payroll/types/payroll.types';
 
-const MOCK_DELAY_MS = 120;
-
-const roundAmount = (value: number) => Math.round(value * 100) / 100;
-
-function toPayrollRecord(template: (typeof salaryTemplates)[number]): PayrollRecord {
-  const grossPay =
-    template.components.basic +
-    template.components.hra +
-    template.components.allowances +
-    template.components.bonus +
-    template.components.otherEarnings;
-
-  const pfEmployee = template.components.basic * (template.rates.pfEmployeeRate / 100);
-  const esi = grossPay * (template.rates.esiRate / 100);
-  const tds = grossPay * (template.rates.tdsRate / 100);
-  const totalDeductions = pfEmployee + esi + tds + template.components.otherDeductions;
-
-  return {
-    payrollId: template.id,
-    employeeId: template.employeeId,
-    employeeName: template.employeeName,
-    employeeCode: template.employeeCode,
-    department: template.department,
-    month: template.month,
-    year: template.year,
-    grossPay: roundAmount(grossPay),
-    totalDeductions: roundAmount(totalDeductions),
-    netPay: roundAmount(grossPay - totalDeductions),
-    status: template.status,
-    processedAt: template.status === 'Draft' ? undefined : `${template.year}-${template.month === 'March' ? '03' : template.month === 'February' ? '02' : '01'}-28`
-  };
-}
-
-function wait(delay = MOCK_DELAY_MS) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delay);
-  });
-}
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
 
 export async function fetchPayrollRecords(query: PayrollQuery = {}): Promise<PayrollListResponse> {
-  await wait();
+  const res = await apiClient.get<ApiResponse<PayrollRecord[]>>('/payroll', {
+    params: query,
+  });
 
-  const filtered = salaryTemplates
-    .filter((entry) => {
-      const matchesMonth = query.month ? entry.month === query.month : true;
-      const matchesYear = query.year ? entry.year === query.year : true;
-      const matchesEmployee = query.employeeId ? entry.employeeId === query.employeeId : true;
-
-      return matchesMonth && matchesYear && matchesEmployee;
-    })
-    .map((entry) => toPayrollRecord(entry));
-
+  const data = res.data.data || [];
   return {
-    data: filtered,
-    total: filtered.length
+    data,
+    total: data.length,
   };
+}
+
+export async function processPayrollRecord(payrollId: string): Promise<PayrollRecord> {
+  const res = await apiClient.post<ApiResponse<PayrollRecord>>(`/payroll/${payrollId}/process`);
+  return res.data.data;
+}
+
+export async function markPayrollRecordPaid(payrollId: string): Promise<PayrollRecord> {
+  const res = await apiClient.post<ApiResponse<PayrollRecord>>(`/payroll/${payrollId}/mark-paid`);
+  return res.data.data;
+}
+
+export async function processAllDraftPayroll(params: { month?: string; year?: number } = {}): Promise<PayrollRecord[]> {
+  const res = await apiClient.post<ApiResponse<PayrollRecord[]>>('/payroll/process-all', undefined, {
+    params,
+  });
+  return res.data.data || [];
 }
 
 export default {
-  fetchPayrollRecords
+  fetchPayrollRecords,
+  processPayrollRecord,
+  markPayrollRecordPaid,
+  processAllDraftPayroll,
 };

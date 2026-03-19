@@ -38,6 +38,7 @@ export default function LeavePage() {
     setStatusFilter,
     departments,
     employeesList,
+    requestableEmployees,
     filteredRequests,
     filteredBalances,
     selectedEmployeeHistory,
@@ -48,7 +49,11 @@ export default function LeavePage() {
     openApplication,
     closeApplication,
     submitApplication,
-    decideRequest
+    decideRequest,
+    isLoading,
+    isActionPending,
+    isSubmitting,
+    isError,
   } = useLeaveManagement();
 
   const stats = [
@@ -156,6 +161,21 @@ export default function LeavePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {isLoading && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={7}>Loading leave requests...</td>
+                </tr>
+              )}
+              {isError && !isLoading && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-red-600 sm:px-6" colSpan={7}>Could not load leave requests right now.</td>
+                </tr>
+              )}
+              {!isLoading && !isError && filteredRequests.length === 0 && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={7}>No leave requests found for current filters.</td>
+                </tr>
+              )}
               {filteredRequests.map((request) => {
                 const st = statusMap[request.status];
                 return (
@@ -177,10 +197,20 @@ export default function LeavePage() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="secondary" disabled={request.status !== 'Pending'} onClick={() => decideRequest(request.id, 'approve')}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={request.status !== 'Pending' || isActionPending}
+                          onClick={() => void decideRequest(request.id, 'approve')}
+                        >
                           Approve
                         </Button>
-                        <Button size="sm" variant="danger" disabled={request.status !== 'Pending'} onClick={() => decideRequest(request.id, 'reject')}>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          disabled={request.status !== 'Pending' || isActionPending}
+                          onClick={() => void decideRequest(request.id, 'reject')}
+                        >
                           Reject
                         </Button>
                       </div>
@@ -296,9 +326,10 @@ export default function LeavePage() {
 
       <LeaveApplicationWizard
         open={isApplicationOpen}
-        employees={employeesList}
+        employees={requestableEmployees}
         holidays={holidays}
         onClose={closeApplication}
+        isSubmitting={isSubmitting}
         onSubmit={submitApplication}
       />
     </div>

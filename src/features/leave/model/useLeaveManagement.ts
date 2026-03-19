@@ -1,7 +1,17 @@
 "use client";
 
 import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { countChargeableLeaveDays, useHolidayCalendar } from '@/features/calendar/model/useHolidayCalendar';
+import { useEmployees } from '@/entities/employee/model/useEmployees';
+import { useAuthStore } from '@/store/authStore';
+import {
+  approveLeaveApi,
+  createLeaveApi,
+  listLeaveApi,
+  rejectLeaveApi,
+  type LeaveItem,
+} from '../api/leaveApi';
 
 export type LeaveType = 'CL' | 'SL' | 'EL';
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -52,184 +62,201 @@ export type LeaveRequestForm = {
   reason: string;
 };
 
-const employees: LeaveBalance[] = [
-  {
-    employeeId: 'emp-1001',
-    employeeName: 'Priya Sharma',
-    employeeCode: 'EMP-1001',
-    department: 'Engineering',
-    cl: { total: 8, used: 2, available: 6 },
-    sl: { total: 8, used: 1, available: 7 },
-    el: { total: 18, used: 5, available: 13 },
-    carryForward: 4,
-    encashable: 7
-  },
-  {
-    employeeId: 'emp-1002',
-    employeeName: 'Rahul Mehta',
-    employeeCode: 'EMP-1002',
-    department: 'Engineering',
-    cl: { total: 8, used: 3, available: 5 },
-    sl: { total: 8, used: 2, available: 6 },
-    el: { total: 18, used: 4, available: 14 },
-    carryForward: 3,
-    encashable: 6
-  },
-  {
-    employeeId: 'emp-1003',
-    employeeName: 'Ananya Joshi',
-    employeeCode: 'EMP-1003',
-    department: 'Human Resources',
-    cl: { total: 8, used: 1, available: 7 },
-    sl: { total: 8, used: 0, available: 8 },
-    el: { total: 18, used: 6, available: 12 },
-    carryForward: 5,
-    encashable: 5
-  },
-  {
-    employeeId: 'emp-1004',
-    employeeName: 'Sneha Patel',
-    employeeCode: 'EMP-1004',
-    department: 'Finance',
-    cl: { total: 8, used: 4, available: 4 },
-    sl: { total: 8, used: 1, available: 7 },
-    el: { total: 18, used: 7, available: 11 },
-    carryForward: 2,
-    encashable: 4
-  },
-  {
-    employeeId: 'emp-1005',
-    employeeName: 'Vikram Singh',
-    employeeCode: 'EMP-1005',
-    department: 'Operations',
-    cl: { total: 8, used: 2, available: 6 },
-    sl: { total: 8, used: 2, available: 6 },
-    el: { total: 18, used: 8, available: 10 },
-    carryForward: 3,
-    encashable: 5
-  }
-];
+const leavePolicy = {
+  cl: 8,
+  sl: 8,
+  el: 18,
+};
 
-const initialRequests: LeaveRequest[] = [
-  {
-    id: 'leave-001',
-    employeeId: 'emp-1001',
-    employeeName: 'Priya Sharma',
-    employeeCode: 'EMP-1001',
-    department: 'Engineering',
-    type: 'CL',
-    from: '2026-03-18',
-    to: '2026-03-19',
-    days: 2,
-    reason: 'Family function in Jaipur.',
-    status: 'Pending',
-    approvalStage: 'Manager',
-    currentApprover: 'Manager',
-    createdAt: '2026-03-15 09:10',
-    history: [{ actor: 'Priya Sharma', action: 'Applied for leave', at: '2026-03-15 09:10' }]
-  },
-  {
-    id: 'leave-002',
-    employeeId: 'emp-1002',
-    employeeName: 'Rahul Mehta',
-    employeeCode: 'EMP-1002',
-    department: 'Engineering',
-    type: 'SL',
-    from: '2026-03-14',
-    to: '2026-03-15',
-    days: 2,
-    reason: 'Recovering from viral fever.',
-    status: 'Pending',
-    approvalStage: 'HR',
-    currentApprover: 'HR',
-    createdAt: '2026-03-13 18:20',
-    history: [
-      { actor: 'Rahul Mehta', action: 'Applied for leave', at: '2026-03-13 18:20' },
-      { actor: 'Engineering Manager', action: 'Approved and escalated to HR', at: '2026-03-14 09:00' }
-    ]
-  },
-  {
-    id: 'leave-003',
-    employeeId: 'emp-1003',
-    employeeName: 'Ananya Joshi',
-    employeeCode: 'EMP-1003',
-    department: 'Human Resources',
-    type: 'EL',
-    from: '2026-03-22',
-    to: '2026-03-25',
-    days: 4,
-    reason: 'Planned annual leave.',
-    status: 'Approved',
-    approvalStage: 'Completed',
-    currentApprover: 'HR',
-    createdAt: '2026-03-10 11:45',
-    history: [
-      { actor: 'Ananya Joshi', action: 'Applied for leave', at: '2026-03-10 11:45' },
-      { actor: 'HR Manager', action: 'Approved leave request', at: '2026-03-11 10:00' }
-    ]
-  },
-  {
-    id: 'leave-004',
-    employeeId: 'emp-1004',
-    employeeName: 'Sneha Patel',
-    employeeCode: 'EMP-1004',
-    department: 'Finance',
-    type: 'CL',
-    from: '2026-03-20',
-    to: '2026-03-20',
-    days: 1,
-    reason: 'Personal emergency.',
-    status: 'Rejected',
-    approvalStage: 'Completed',
-    currentApprover: 'Manager',
-    createdAt: '2026-03-12 16:05',
-    history: [
-      { actor: 'Sneha Patel', action: 'Applied for leave', at: '2026-03-12 16:05' },
-      { actor: 'Finance Manager', action: 'Rejected leave request', at: '2026-03-13 09:30', note: 'Quarter close in progress.' }
-    ]
-  }
-];
+const toUiLeaveType = (type: LeaveItem['type']): LeaveType => {
+  if (type === 'SICK') return 'SL';
+  if (type === 'ANNUAL') return 'EL';
+  return 'CL';
+};
 
-function reduceBalance(balance: LeaveBalance, type: LeaveType, days: number): LeaveBalance {
-  const key = type.toLowerCase() as 'cl' | 'sl' | 'el';
+const toUiStatus = (status: LeaveItem['status']): LeaveStatus => {
+  if (status === 'APPROVED') return 'Approved';
+  if (status === 'REJECTED') return 'Rejected';
+  return 'Pending';
+};
+
+const toApprovalStage = (status: LeaveItem['status']): ApprovalStage => {
+  if (status === 'APPROVED' || status === 'REJECTED') return 'Completed';
+  if (status === 'HR_PENDING') return 'HR';
+  return 'Manager';
+};
+
+const toCurrentApprover = (status: LeaveItem['status']): 'Manager' | 'HR' => {
+  if (status === 'HR_PENDING') return 'HR';
+  return 'Manager';
+};
+
+const toEmployeeCode = (employeeId: string) => {
+  return `EMP-${employeeId.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+};
+
+const toDisplayDate = (value: string) => {
+  return new Date(value).toISOString().slice(0, 10);
+};
+
+const toDisplayDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
+
+const mapLeaveRequest = (item: LeaveItem, holidays: ReturnType<typeof useHolidayCalendar>['holidays']): LeaveRequest => {
+  const from = toDisplayDate(item.startDate);
+  const to = toDisplayDate(item.endDate);
+  const employeeName = item.employee
+    ? `${item.employee.firstName} ${item.employee.lastName}`.trim()
+    : 'Employee';
+
   return {
-    ...balance,
-    [key]: {
-      ...balance[key],
-      used: balance[key].used + days,
-      available: Math.max(0, balance[key].available - days)
-    }
+    id: item.id,
+    employeeId: item.employeeId,
+    employeeName,
+    employeeCode: toEmployeeCode(item.employeeId),
+    department: item.employee?.department?.name || 'No Department',
+    type: toUiLeaveType(item.type),
+    from,
+    to,
+    days: countChargeableLeaveDays(from, to, holidays),
+    reason: item.reason || '-',
+    status: toUiStatus(item.status),
+    approvalStage: toApprovalStage(item.status),
+    currentApprover: toCurrentApprover(item.status),
+    createdAt: toDisplayDateTime(item.createdAt),
+    history: [
+      {
+        actor: employeeName,
+        action: 'Applied for leave',
+        at: toDisplayDateTime(item.createdAt),
+      },
+    ],
   };
-}
+};
 
 export function useLeaveManagement() {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const { holidays } = useHolidayCalendar();
-  const [balances, setBalances] = useState(employees);
-  const [requests, setRequests] = useState(initialRequests);
   const [query, setQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('All Employees');
   const [statusFilter, setStatusFilter] = useState<'All' | LeaveStatus>('All');
   const [isApplicationOpen, setIsApplicationOpen] = useState(false);
 
-  const departments = useMemo(
-    () => ['All Departments', ...Array.from(new Set(balances.map((balance) => balance.department)))],
-    [balances]
-  );
+  const { data: employeeData = [] } = useEmployees(1, 300);
 
-  const employeesList = useMemo(
-    () => balances.map((balance) => ({ id: balance.employeeId, name: balance.employeeName, department: balance.department })),
-    [balances]
-  );
+  const leaveQuery = useQuery({
+    queryKey: ['leave-management', user?.role, user?.employeeId],
+    queryFn: () => listLeaveApi(),
+    enabled: Boolean(user?.role),
+  });
+
+  const requests = useMemo(() => {
+    return (leaveQuery.data || []).map((item) => mapLeaveRequest(item, holidays));
+  }, [holidays, leaveQuery.data]);
+
+  const decideMutation = useMutation({
+    mutationFn: ({ requestId, decision }: { requestId: string; decision: 'approve' | 'reject' }) => {
+      if (decision === 'approve') {
+        return approveLeaveApi(requestId);
+      }
+
+      return rejectLeaveApi(requestId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['leave-management'] });
+      await queryClient.invalidateQueries({ queryKey: ['leave-self'] });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (form: LeaveRequestForm) => {
+      return createLeaveApi({
+        startDate: form.from,
+        endDate: form.to,
+        type: form.type,
+        reason: form.reason,
+      });
+    },
+    onSuccess: async () => {
+      closeApplication();
+      await queryClient.invalidateQueries({ queryKey: ['leave-management'] });
+      await queryClient.invalidateQueries({ queryKey: ['leave-self'] });
+    },
+  });
+
+  const balances = useMemo<LeaveBalance[]>(() => {
+    const approvedByEmployee = new Map<string, { cl: number; sl: number; el: number }>();
+
+    requests.forEach((request) => {
+      if (request.status !== 'Approved') return;
+
+      const current = approvedByEmployee.get(request.employeeId) || { cl: 0, sl: 0, el: 0 };
+      if (request.type === 'CL') current.cl += request.days;
+      if (request.type === 'SL') current.sl += request.days;
+      if (request.type === 'EL') current.el += request.days;
+      approvedByEmployee.set(request.employeeId, current);
+    });
+
+    return employeeData.map((employee) => {
+      const used = approvedByEmployee.get(employee.id) || { cl: 0, sl: 0, el: 0 };
+      const employeeName = `${employee.firstName} ${employee.lastName}`.trim();
+      const elAvailable = Math.max(leavePolicy.el - used.el, 0);
+
+      return {
+        employeeId: employee.id,
+        employeeName,
+        employeeCode: toEmployeeCode(employee.id),
+        department: employee.department?.name || 'No Department',
+        cl: {
+          total: leavePolicy.cl,
+          used: used.cl,
+          available: Math.max(leavePolicy.cl - used.cl, 0),
+        },
+        sl: {
+          total: leavePolicy.sl,
+          used: used.sl,
+          available: Math.max(leavePolicy.sl - used.sl, 0),
+        },
+        el: {
+          total: leavePolicy.el,
+          used: used.el,
+          available: elAvailable,
+        },
+        carryForward: Math.min(elAvailable, 5),
+        encashable: Math.max(elAvailable - 5, 0),
+      };
+    });
+  }, [employeeData, requests]);
+
+  const departments = useMemo(() => {
+    return ['All Departments', ...Array.from(new Set(balances.map((balance) => balance.department)))];
+  }, [balances]);
+
+  const employeesList = useMemo(() => {
+    return balances.map((balance) => ({
+      id: balance.employeeId,
+      name: balance.employeeName,
+      department: balance.department,
+    }));
+  }, [balances]);
+
+  const requestableEmployees = useMemo(() => {
+    if (!user?.employeeId) return [];
+
+    const self = balances.find((balance) => balance.employeeId === user.employeeId);
+    if (!self) return [];
+
+    return [{ id: self.employeeId, name: self.employeeName, department: self.department }];
+  }, [balances, user?.employeeId]);
 
   const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return requests
-      .map((request) => ({
-        ...request,
-        days: countChargeableLeaveDays(request.from, request.to, holidays)
-      }))
-      .filter((request) => {
+    return requests.filter((request) => {
       const matchesDepartment = selectedDepartment === 'All Departments' || request.department === selectedDepartment;
       const matchesEmployee = selectedEmployeeId === 'All Employees' || request.employeeId === selectedEmployeeId;
       const matchesStatus = statusFilter === 'All' || request.status === statusFilter;
@@ -239,9 +266,9 @@ export function useLeaveManagement() {
         request.employeeCode.toLowerCase().includes(normalizedQuery) ||
         request.reason.toLowerCase().includes(normalizedQuery);
 
-        return matchesDepartment && matchesEmployee && matchesStatus && matchesQuery;
-      });
-  }, [holidays, query, requests, selectedDepartment, selectedEmployeeId, statusFilter]);
+      return matchesDepartment && matchesEmployee && matchesStatus && matchesQuery;
+    });
+  }, [query, requests, selectedDepartment, selectedEmployeeId, statusFilter]);
 
   const filteredBalances = useMemo(() => {
     return balances.filter((balance) => {
@@ -269,104 +296,12 @@ export function useLeaveManagement() {
   const openApplication = () => setIsApplicationOpen(true);
   const closeApplication = () => setIsApplicationOpen(false);
 
-  const submitApplication = (form: LeaveRequestForm) => {
-    const employee = balances.find((balance) => balance.employeeId === form.employeeId);
-    if (!employee) return;
-
-    const days = countChargeableLeaveDays(form.from, form.to, holidays);
-
-    setRequests((prev) => [
-      {
-        id: `leave-${Date.now()}`,
-        employeeId: employee.employeeId,
-        employeeName: employee.employeeName,
-        employeeCode: employee.employeeCode,
-        department: employee.department,
-        type: form.type,
-        from: form.from,
-        to: form.to,
-        days,
-        reason: form.reason.trim(),
-        status: 'Pending',
-        approvalStage: 'Manager',
-        currentApprover: 'Manager',
-        createdAt: new Date().toLocaleString(),
-        history: [{ actor: employee.employeeName, action: 'Applied for leave', at: new Date().toLocaleString() }]
-      },
-      ...prev
-    ]);
-
-    if (selectedEmployeeId === 'All Employees') {
-      setSelectedEmployeeId(employee.employeeId);
-    }
-
-    closeApplication();
+  const submitApplication = async (form: LeaveRequestForm) => {
+    await createMutation.mutateAsync(form);
   };
 
-  const decideRequest = (requestId: string, decision: 'approve' | 'reject') => {
-    let approvedRequest: LeaveRequest | null = null;
-
-    setRequests((prev) =>
-      prev.map((request) => {
-        if (request.id !== requestId || request.status !== 'Pending') {
-          return request;
-        }
-
-        const history = [...request.history];
-
-        if (decision === 'reject') {
-          history.push({
-            actor: request.currentApprover === 'Manager' ? `${request.department} Manager` : 'HR Manager',
-            action: 'Rejected leave request',
-            at: new Date().toLocaleString()
-          });
-
-          return {
-            ...request,
-            status: 'Rejected',
-            approvalStage: 'Completed',
-            history
-          };
-        }
-
-        if (request.currentApprover === 'Manager') {
-          history.push({
-            actor: `${request.department} Manager`,
-            action: 'Approved and escalated to HR',
-            at: new Date().toLocaleString()
-          });
-
-          return {
-            ...request,
-            approvalStage: 'HR',
-            currentApprover: 'HR',
-            history
-          };
-        }
-
-        history.push({ actor: 'HR Manager', action: 'Approved leave request', at: new Date().toLocaleString() });
-
-        const nextRequest = {
-          ...request,
-          status: 'Approved' as const,
-          approvalStage: 'Completed' as const,
-          history
-        };
-
-        approvedRequest = nextRequest;
-        return nextRequest;
-      })
-    );
-
-    if (approvedRequest) {
-      setBalances((prev) =>
-        prev.map((balance) =>
-          balance.employeeId === approvedRequest?.employeeId
-            ? reduceBalance(balance, approvedRequest.type, approvedRequest.days)
-            : balance
-        )
-      );
-    }
+  const decideRequest = async (requestId: string, decision: 'approve' | 'reject') => {
+    await decideMutation.mutateAsync({ requestId, decision });
   };
 
   const carryForwardPlan = useMemo(() => {
@@ -389,6 +324,7 @@ export function useLeaveManagement() {
     setStatusFilter,
     departments,
     employeesList,
+    requestableEmployees,
     filteredRequests,
     filteredBalances,
     selectedEmployeeHistory,
@@ -399,6 +335,10 @@ export function useLeaveManagement() {
     openApplication,
     closeApplication,
     submitApplication,
-    decideRequest
+    decideRequest,
+    isLoading: leaveQuery.isLoading,
+    isActionPending: decideMutation.isPending,
+    isSubmitting: createMutation.isPending,
+    isError: leaveQuery.isError,
   };
 }

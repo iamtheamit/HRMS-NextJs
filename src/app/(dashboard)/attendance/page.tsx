@@ -12,10 +12,9 @@ import {
   Clock3,
   Download,
   FileText,
-  Home,
   Moon,
   UserCheck,
-  Users
+  Users,
 } from 'lucide-react';
 import { HolidayCalendarPanel } from '@/features/calendar/ui/HolidayCalendarPanel';
 import { useAttendanceManagement, type AttendanceStatus } from '@/features/attendance/model/useAttendanceManagement';
@@ -26,10 +25,10 @@ const statusMap: Record<AttendanceStatus, { variant: 'success' | 'warning' | 'da
   Present: { variant: 'success', chip: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
   Absent: { variant: 'danger', chip: 'bg-red-50 text-red-700 ring-red-200' },
   'Half Day': { variant: 'warning', chip: 'bg-amber-50 text-amber-700 ring-amber-200' },
-  WFH: { variant: 'soft', chip: 'bg-brand-50 text-brand-700 ring-brand-200' }
+  Late: { variant: 'soft', chip: 'bg-brand-50 text-brand-700 ring-brand-200' }
 };
 
-const statusOptions: AttendanceStatus[] = ['Present', 'Absent', 'Half Day', 'WFH'];
+const statusOptions: AttendanceStatus[] = ['Present', 'Absent', 'Half Day', 'Late'];
 
 export default function AttendancePage() {
   const {
@@ -55,7 +54,10 @@ export default function AttendancePage() {
     departmentSummary,
     markAttendance,
     exportAttendanceCsv,
-    exportAttendancePdf
+    exportAttendancePdf,
+    isLoading,
+    isError,
+    isMarking,
   } = useAttendanceManagement();
 
   const statCards = [
@@ -68,10 +70,10 @@ export default function AttendancePage() {
       color: 'text-emerald-600'
     },
     {
-      label: 'WFH Today',
-      value: dailyStats.wfh,
-      helper: 'Remote attendance logged',
-      icon: Home,
+      label: 'Late Today',
+      value: dailyStats.late,
+      helper: 'Late check-ins logged',
+      icon: Clock3,
       bg: 'bg-brand-50',
       color: 'text-brand-600'
     },
@@ -209,6 +211,21 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {isLoading && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={5}>Loading attendance records...</td>
+                </tr>
+              )}
+              {isError && !isLoading && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-red-600 sm:px-6" colSpan={5}>Could not load attendance records right now.</td>
+                </tr>
+              )}
+              {!isLoading && !isError && filteredRecords.length === 0 && (
+                <tr>
+                  <td className="px-5 py-6 text-sm text-slate-500 sm:px-6" colSpan={5}>No employees found for the selected filters.</td>
+                </tr>
+              )}
               {filteredRecords.map((record) => {
                 const status = statusMap[record.status];
                 return (
@@ -228,7 +245,8 @@ export default function AttendancePage() {
                           <button
                             key={option}
                             type="button"
-                            onClick={() => markAttendance(record.id, option)}
+                            disabled={isMarking}
+                            onClick={() => markAttendance(record.employeeId, option)}
                             className={clsx(
                               'rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition',
                               record.status === option
@@ -265,7 +283,7 @@ export default function AttendancePage() {
                 <tr className="border-b border-slate-100">
                   <th className="whitespace-nowrap px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:px-6">Employee</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Present</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">WFH</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Late</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Half Day</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Absent</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Rate</th>
@@ -279,7 +297,7 @@ export default function AttendancePage() {
                       <p className="text-xs text-slate-500">{record.department}</p>
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">{record.monthly.present}</td>
-                    <td className="px-4 py-3.5 text-slate-600">{record.monthly.wfh}</td>
+                    <td className="px-4 py-3.5 text-slate-600">{record.monthly.late}</td>
                     <td className="px-4 py-3.5 text-slate-600">{record.monthly.halfDay}</td>
                     <td className="px-4 py-3.5 text-slate-600">{record.monthly.absent}</td>
                     <td className="px-4 py-3.5">
@@ -312,11 +330,11 @@ export default function AttendancePage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Compliance Rate</p>
                 <p className="mt-2 text-3xl font-semibold text-slate-900">{dailyStats.complianceRate}%</p>
-                <p className="mt-1 text-xs text-slate-500">Present, WFH, and Half Day combined against tracked headcount.</p>
+                <p className="mt-1 text-xs text-slate-500">Present, Late, and Half Day combined against tracked headcount.</p>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs text-slate-600">
                 <div className="rounded-xl bg-brand-50 px-3 py-3 text-center">On-site<br /><span className="text-base font-semibold text-brand-700">{attendanceInsights.onsiteCount}</span></div>
-                <div className="rounded-xl bg-emerald-50 px-3 py-3 text-center">Remote<br /><span className="text-base font-semibold text-emerald-700">{attendanceInsights.remoteCount}</span></div>
+                <div className="rounded-xl bg-emerald-50 px-3 py-3 text-center">Late<br /><span className="text-base font-semibold text-emerald-700">{attendanceInsights.lateCount}</span></div>
                 <div className="rounded-xl bg-amber-50 px-3 py-3 text-center">Needs Attention<br /><span className="text-base font-semibold text-amber-700">{attendanceInsights.attentionCount}</span></div>
               </div>
             </div>
@@ -348,7 +366,7 @@ export default function AttendancePage() {
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                     <div className="rounded-xl bg-white px-3 py-2">Present: <span className="font-semibold text-slate-900">{department.present}</span></div>
-                    <div className="rounded-xl bg-white px-3 py-2">WFH: <span className="font-semibold text-slate-900">{department.wfh}</span></div>
+                      <div className="rounded-xl bg-white px-3 py-2">Late: <span className="font-semibold text-slate-900">{department.late}</span></div>
                     <div className="rounded-xl bg-white px-3 py-2">Half Day: <span className="font-semibold text-slate-900">{department.halfDay}</span></div>
                     <div className="rounded-xl bg-white px-3 py-2">Absent: <span className="font-semibold text-slate-900">{department.absent}</span></div>
                   </div>

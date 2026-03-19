@@ -24,8 +24,10 @@ type EmployeeOption = {
 type Props = {
   open: boolean;
   employees: EmployeeOption[];
+  assignedByRole: TaskAssignerRole;
+  isSubmitting?: boolean;
   onClose: () => void;
-  onSubmit: (form: TaskForm) => void;
+  onSubmit: (form: TaskForm) => Promise<void> | void;
 };
 
 const STEPS = [
@@ -46,13 +48,11 @@ const defaultForm: TaskForm = {
   assignedToId: '',
   dueDate: '',
   priority: 'Medium',
-  assignedByRole: 'Manager'
 };
 
 const priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
-const assignerRoles: TaskAssignerRole[] = ['Manager', 'HR'];
 
-export function TaskAssignmentWizard({ open, employees, onClose, onSubmit }: Props) {
+export function TaskAssignmentWizard({ open, employees, assignedByRole, isSubmitting = false, onClose, onSubmit }: Props) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<TaskForm>(defaultForm);
   const [touched, setTouched] = useState(false);
@@ -98,8 +98,8 @@ export function TaskAssignmentWizard({ open, employees, onClose, onSubmit }: Pro
     goToStep(step + 1);
   };
 
-  const handleSubmit = () => {
-    onSubmit(form);
+  const handleSubmit = async () => {
+    await onSubmit(form);
     setSubmitted(true);
     window.setTimeout(() => onClose(), 1200);
   };
@@ -236,22 +236,8 @@ export function TaskAssignmentWizard({ open, employees, onClose, onSubmit }: Pro
 
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">Assigned By</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {assignerRoles.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, assignedByRole: role }))}
-                      className={clsx(
-                        'rounded-xl border px-3 py-2 text-sm font-medium transition',
-                        form.assignedByRole === role
-                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/30'
-                      )}
-                    >
-                      {role}
-                    </button>
-                  ))}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+                  {assignedByRole}
                 </div>
               </div>
             </div>
@@ -281,6 +267,7 @@ export function TaskAssignmentWizard({ open, employees, onClose, onSubmit }: Pro
                       <Badge variant={form.priority === 'Critical' ? 'danger' : form.priority === 'High' ? 'warning' : 'soft'} className="mt-1">
                         {form.priority}
                       </Badge>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Assigned by {assignedByRole}</p>
                     </div>
                   </div>
 
@@ -321,7 +308,7 @@ export function TaskAssignmentWizard({ open, employees, onClose, onSubmit }: Pro
             {step < STEPS.length ? (
               <Button type="button" onClick={handleNext}>Next →</Button>
             ) : (
-              <Button type="button" onClick={handleSubmit} disabled={submitted}>Assign Task</Button>
+              <Button type="button" onClick={handleSubmit} disabled={submitted || isSubmitting}>{isSubmitting ? 'Assigning...' : 'Assign Task'}</Button>
             )}
           </div>
         </div>
