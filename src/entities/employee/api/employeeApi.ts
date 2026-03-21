@@ -14,4 +14,14 @@ export const fetchEmployees = async (page = 1, size = 10) => {
   return res.data.data;
 };
 
-export default { fetchEmployees };
+export const fetchEmployeeById = async (id: string) => {
+  const res = await apiClient.get<ApiResponse<Employee>>(`/employees/${id}`);
+  return res.data.data;
+};
+
+export const updateEmployee = async (id: string, payload: Partial<Employee>) => {
+  const res = await apiClient.put<ApiResponse<Employee>>(`/employees/${id}`, payload);
+  return res.data.data;
+};
+
+export default { fetchEmployees, fetchEmployeeById, updateEmployee };

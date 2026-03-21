@@ -6,6 +6,7 @@ export const routes = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   dashboard: '/dashboard',
+  profile: '/profile',
   hrAdmin: '/hr-admin',
   superAdmin: '/super-admin',
   manager: '/manager',
@@ -22,6 +23,7 @@ export const routes = {
   salary: '/salary',
   salaryDetails: (id: string | number) => `/salary/${id}`,
   payroll: '/payroll',
-  payrollDetails: (id: string | number) => `/payroll/${id}`
+  payrollDetails: (id: string | number) => `/payroll/${id}`,
+  settings: '/settings'
 } as const;
 

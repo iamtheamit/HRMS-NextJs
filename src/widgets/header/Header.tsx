@@ -1,8 +1,10 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Search, Settings } from 'lucide-react';
+import { routes } from '@/constants/routes';
 
 const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -17,6 +19,7 @@ const titleMap: Record<string, string> = {
   '/tasks': 'Task Assignment',
   '/salary': 'Salary Management',
   '/payroll': 'Payroll Management',
+  '/profile': 'My Profile',
   '/settings': 'Settings'
 };
 
@@ -65,13 +68,13 @@ export function Header() {
             />
           </div>
 
-          <button
-            type="button"
-            aria-label="Settings"
+          <Link
+            href={routes.profile}
+            aria-label="My Profile"
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
           >
             <Settings className="h-[18px] w-[18px]" />
-          </button>
+          </Link>
 
           <div className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-indigo-500 text-xs font-bold text-white">
             AK

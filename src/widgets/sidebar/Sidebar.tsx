@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Wallet,
   HandCoins,
+  UserCircle2,
   Settings,
   Menu,
   X,
@@ -43,6 +44,7 @@ const mainNav: NavItem[] = [
 ];
 
 const bottomNav: NavItem[] = [
+  { label: 'My Profile', href: routes.profile, icon: UserCircle2, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER', 'EMPLOYEE'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'] }
 ];
 
